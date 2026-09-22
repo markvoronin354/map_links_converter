@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Pin Shadow -->
+    <path
+        android:fillColor="#33000000"
+        android:pathData="M54,27 C41.85,27 32,36.85 32,49 C32,64.5 54,83 54,83 C54,83 76,64.5 76,49 C76,36.85 66.15,27 54,27 Z" />
+
+    <!-- Main Pin Body (White) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,25 C41.85,25 32,34.85 32,47 C32,62.5 54,81 54,81 C54,81 76,62.5 76,47 C76,34.85 66.15,25 54,25 Z" />
+
+    <!-- Inner Accent Badge (Google Red) -->
+    <path
+        android:fillColor="#EA4335"
+        android:pathData="M54,31 C61.73,31 68,37.27 68,45 C68,52.73 61.73,59 54,59 C46.27,59 40,52.73 40,45 C40,37.27 46.27,31 54,31 Z" />
+
+    <!-- Convert Arrows: Top Arrow (Right) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M45,41 L57,41 M53,37 L58,41 L53,45" />
+
+    <!-- Convert Arrows: Bottom Arrow (Left) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M63,49 L51,49 M55,45 L50,49 L55,53" />
+</vector>
