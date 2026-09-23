@@ -44,78 +44,24 @@ object UrlExpander {
             val maxRedirects = 5
 
             while (redirectCount < maxRedirects) {
-                var connection = (URL(currentUrl).openConnection() as HttpURLConnection)
-                connection.instanceFollowRedirects = false
-                connection.requestMethod = "HEAD"
-                connection.connectTimeout = 3000
-                connection.readTimeout = 3000
+                val urlObj = URL(currentUrl)
+                val connection = (urlObj.openConnection() as HttpURLConnection)
+                connection.instanceFollowRedirects = true
+                connection.requestMethod = "GET"
+                connection.connectTimeout = 2000
+                connection.readTimeout = 2000
                 connection.setRequestProperty("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1")
 
                 val responseCode = connection.responseCode
-                var location = connection.getHeaderField("Location")
+                val finalUrl = connection.url.toString()
+                val location = connection.getHeaderField("Location")
 
-                if (location.isNullOrBlank() || responseCode in 400..499) {
+                if (finalUrl != currentUrl && !isShortenedUrl(finalUrl)) {
                     connection.disconnect()
-                    connection = (URL(currentUrl).openConnection() as HttpURLConnection)
-                    connection.instanceFollowRedirects = false
-                    connection.requestMethod = "GET"
-                    connection.connectTimeout = 3000
-                    connection.readTimeout = 3000
-                    connection.setRequestProperty("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1")
-                    location = connection.getHeaderField("Location")
-
-                    if (location.isNullOrBlank() && connection.responseCode == 200) {
-                        try {
-                            val stream = connection.inputStream
-                            val reader = stream.bufferedReader()
-                            val sb = StringBuilder()
-                            var line: String? = reader.readLine()
-                            var linesRead = 0
-                            while (line != null && linesRead < 100) {
-                                sb.append(line).append("\n")
-                                if (line.contains("</head>", ignoreCase = true)) break
-                                line = reader.readLine()
-                                linesRead++
-                            }
-                            val html = sb.toString()
-
-                            val ogUrlMatcher = OG_URL_REGEX.matcher(html)
-                            if (ogUrlMatcher.find()) {
-                                val foundUrl = ogUrlMatcher.group(1)
-                                if (!foundUrl.isNullOrBlank() && foundUrl != currentUrl) {
-                                    connection.disconnect()
-                                    return@withContext foundUrl
-                                }
-                            }
-
-                            val titleMatcher = OG_TITLE_REGEX.matcher(html)
-                            val title = if (titleMatcher.find()) {
-                                titleMatcher.group(1)
-                            } else {
-                                val htmlTitleMatcher = TITLE_TAG_REGEX.matcher(html)
-                                if (htmlTitleMatcher.find()) htmlTitleMatcher.group(1) else null
-                            }
-
-                            val coordsMatcher = HTML_COORDS_REGEX.matcher(html)
-                            val coords = if (coordsMatcher.find()) "${coordsMatcher.group(1)},${coordsMatcher.group(2)}" else null
-                            val cleanedTitle = cleanTitle(title)
-
-                            connection.disconnect()
-
-                            if (!coords.isNullOrBlank() && !cleanedTitle.isNullOrBlank()) {
-                                return@withContext "https://maps.apple.com/?q=${URLEncoder.encode(cleanedTitle, "UTF-8")}&ll=$coords"
-                            } else if (!coords.isNullOrBlank()) {
-                                return@withContext "https://maps.apple.com/?ll=$coords"
-                            } else if (!cleanedTitle.isNullOrBlank()) {
-                                return@withContext "https://maps.apple.com/?q=${URLEncoder.encode(cleanedTitle, "UTF-8")}"
-                            }
-                        } catch (e: Exception) {
-                            // Ignore read errors
-                        }
-                    }
+                    return@withContext finalUrl
                 }
 
-                if (!location.isNullOrBlank()) {
+                if (!location.isNullOrBlank() && responseCode in 300..399) {
                     connection.disconnect()
                     currentUrl = if (location.startsWith("http", ignoreCase = true)) {
                         location
@@ -124,12 +70,61 @@ object UrlExpander {
                     }
                     redirectCount++
                     if (!isShortenedUrl(currentUrl)) {
-                        break
+                        return@withContext currentUrl
+                    }
+                    continue
+                }
+
+                if (responseCode == 200) {
+                    try {
+                        val stream = connection.inputStream
+                        val reader = stream.bufferedReader()
+                        val sb = StringBuilder()
+                        var line: String? = reader.readLine()
+                        var linesRead = 0
+                        while (line != null && linesRead < 100) {
+                            sb.append(line).append("\n")
+                            if (line.contains("</head>", ignoreCase = true)) break
+                            line = reader.readLine()
+                            linesRead++
+                        }
+                        val html = sb.toString()
+                        connection.disconnect()
+
+                        val ogUrlMatcher = OG_URL_REGEX.matcher(html)
+                        if (ogUrlMatcher.find()) {
+                            val foundUrl = ogUrlMatcher.group(1)
+                            if (!foundUrl.isNullOrBlank() && foundUrl != currentUrl) {
+                                return@withContext foundUrl
+                            }
+                        }
+
+                        val titleMatcher = OG_TITLE_REGEX.matcher(html)
+                        val title = if (titleMatcher.find()) {
+                            titleMatcher.group(1)
+                        } else {
+                            val htmlTitleMatcher = TITLE_TAG_REGEX.matcher(html)
+                            if (htmlTitleMatcher.find()) htmlTitleMatcher.group(1) else null
+                        }
+
+                        val coordsMatcher = HTML_COORDS_REGEX.matcher(html)
+                        val coords = if (coordsMatcher.find()) "${coordsMatcher.group(1)},${coordsMatcher.group(2)}" else null
+                        val cleanedTitle = cleanTitle(title)
+
+                        if (!coords.isNullOrBlank() && !cleanedTitle.isNullOrBlank()) {
+                            return@withContext "https://maps.apple.com/?q=${URLEncoder.encode(cleanedTitle, "UTF-8")}&ll=$coords"
+                        } else if (!coords.isNullOrBlank()) {
+                            return@withContext "https://maps.apple.com/?ll=$coords"
+                        } else if (!cleanedTitle.isNullOrBlank()) {
+                            return@withContext "https://maps.apple.com/?q=${URLEncoder.encode(cleanedTitle, "UTF-8")}"
+                        }
+                    } catch (e: Exception) {
+                        connection.disconnect()
                     }
                 } else {
                     connection.disconnect()
-                    break
                 }
+                break
             }
             currentUrl
         } catch (e: Exception) {
@@ -154,9 +149,19 @@ object UrlExpander {
                 lower.contains("bit.ly") ||
                 lower.contains("tinyurl.com") ||
                 lower.contains("apple.co") ||
-                lower.contains("maps.apple/") ||
                 lower.contains("maps.apple.com/p/") ||
-                lower.contains("maps.apple.com/place/") ||
-                (lower.contains("maps.apple") && !lower.contains("ll="))
+                lower.contains("maps.apple/p/") ||
+                (lower.contains("maps.apple") && !hasLocationalParams(lower))
+    }
+
+    private fun hasLocationalParams(lowerUrl: String): Boolean {
+        return lowerUrl.contains("ll=") ||
+                lowerUrl.contains("q=") ||
+                lowerUrl.contains("address=") ||
+                lowerUrl.contains("saddr=") ||
+                lowerUrl.contains("daddr=") ||
+                lowerUrl.contains("latlng=") ||
+                lowerUrl.contains("coordinate=") ||
+                lowerUrl.contains("/place/")
     }
 }

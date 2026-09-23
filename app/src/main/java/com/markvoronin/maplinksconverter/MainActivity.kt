@@ -1,7 +1,6 @@
 package com.markvoronin.maplinksconverter
 
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
@@ -11,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.markvoronin.maplinksconverter.data.AppleMapsConverter
+import com.markvoronin.maplinksconverter.data.ConversionResult
 import com.markvoronin.maplinksconverter.data.MapTargetApp
 import com.markvoronin.maplinksconverter.data.UrlExpander
 import com.markvoronin.maplinksconverter.ui.HomeScreen
@@ -26,7 +26,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        handleIncomingIntent(intent)
+        if (handleIncomingIntentFast(intent)) {
+            return
+        }
 
         setContent {
             MapLinksConverterTheme {
@@ -38,13 +40,57 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleIncomingIntent(intent)
+        handleIncomingIntentFast(intent)
     }
 
-    private fun handleIncomingIntent(intent: Intent?) {
-        if (intent == null) return
+    /**
+     * Fast synchronously attempt to convert and launch target app for external intents.
+     * Returns true if the activity launched target app and finished immediately.
+     */
+    private fun handleIncomingIntentFast(intent: Intent?): Boolean {
+        if (intent == null) return false
 
-        val input = when (intent.action) {
+        val input = extractInputFromIntent(intent) ?: return false
+        val isExternalIntent = intent.action == Intent.ACTION_VIEW || intent.action == Intent.ACTION_SEND
+
+        if (isExternalIntent && viewModel.isAutoRedirectEnabled()) {
+            val targetApp = viewModel.getTargetAppForInput(input)
+            val initialResult = AppleMapsConverter.convert(input, targetApp)
+
+            if (initialResult.isSuccess && initialResult.hasLocationData()) {
+                if (launchTargetApp(initialResult)) {
+                    return true
+                }
+            }
+        }
+
+        // Async fallback if short URL expansion is needed or auto-redirect disabled
+        lifecycleScope.launch {
+            val targetApp = viewModel.getTargetAppForInput(input)
+            var conversionResult = AppleMapsConverter.convert(input, targetApp)
+
+            if (!conversionResult.isSuccess || !conversionResult.hasLocationData()) {
+                val expandedInput = UrlExpander.expandUrlIfNeeded(input)
+                if (expandedInput != input) {
+                    val updatedTargetApp = viewModel.getTargetAppForInput(expandedInput)
+                    conversionResult = AppleMapsConverter.convert(expandedInput, updatedTargetApp)
+                }
+            }
+
+            if (isExternalIntent && conversionResult.isSuccess && viewModel.isAutoRedirectEnabled()) {
+                if (launchTargetApp(conversionResult)) {
+                    return@launch
+                }
+            }
+
+            viewModel.processIntentInput(input)
+        }
+
+        return false
+    }
+
+    private fun extractInputFromIntent(intent: Intent): String? {
+        return when (intent.action) {
             Intent.ACTION_VIEW -> intent.dataString
             Intent.ACTION_SEND -> {
                 if (intent.type == "text/plain") {
@@ -55,58 +101,33 @@ class MainActivity : ComponentActivity() {
             }
             else -> null
         }
+    }
 
-        if (!input.isNullOrBlank()) {
-            val isExternalIntent = intent.action == Intent.ACTION_VIEW || intent.action == Intent.ACTION_SEND
+    private fun launchTargetApp(result: ConversionResult): Boolean {
+        val redirectUrl = result.convertedUrl ?: return false
+        val isWazeTarget = result.targetApp == MapTargetApp.WAZE
+        val appName = if (isWazeTarget) "Waze" else "Google Maps"
+        val targetPackage = if (isWazeTarget) "com.waze" else "com.google.android.apps.maps"
 
-            lifecycleScope.launch {
-                val expandedInput = UrlExpander.expandUrlIfNeeded(input)
-                val targetApp = viewModel.getTargetAppForInput(expandedInput)
-                val conversionResult = AppleMapsConverter.convert(expandedInput, targetApp)
+        val redirectIntent = Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl)).apply {
+            setPackage(targetPackage)
+        }
 
-                if (isExternalIntent && conversionResult.isSuccess && viewModel.isAutoRedirectEnabled()) {
-                    val redirectUrl = conversionResult.convertedUrl
-                    val isWazeTarget = conversionResult.targetApp == MapTargetApp.WAZE
-                    val appName = if (isWazeTarget) "Waze" else "Google Maps"
-
-                    if (!redirectUrl.isNullOrBlank()) {
-                        try {
-                            val redirectIntent = Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl))
-                            val pm = packageManager
-                            if (isWazeTarget) {
-                                val wazeTestIntent = Intent(Intent.ACTION_VIEW, Uri.parse("waze://"))
-                                val resolveInfo = pm.resolveActivity(wazeTestIntent, PackageManager.MATCH_DEFAULT_ONLY)
-                                if (resolveInfo != null) {
-                                    redirectIntent.setPackage("com.waze")
-                                }
-                            } else {
-                                val gmapsTestIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps"))
-                                gmapsTestIntent.setPackage("com.google.android.apps.maps")
-                                val resolveInfo = pm.resolveActivity(gmapsTestIntent, PackageManager.MATCH_DEFAULT_ONLY)
-                                if (resolveInfo != null) {
-                                    redirectIntent.setPackage("com.google.android.apps.maps")
-                                }
-                            }
-
-                            startActivity(redirectIntent)
-                            Toast.makeText(this@MainActivity, "Opening in $appName...", Toast.LENGTH_SHORT).show()
-                            finish()
-                            return@launch
-                        } catch (e: Exception) {
-                            try {
-                                val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl))
-                                startActivity(fallbackIntent)
-                                Toast.makeText(this@MainActivity, "Opening in $appName...", Toast.LENGTH_SHORT).show()
-                                finish()
-                                return@launch
-                            } catch (e2: Exception) {
-                                Toast.makeText(this@MainActivity, "Could not launch $appName: ${e2.localizedMessage}", Toast.LENGTH_LONG).show()
-                            }
-                        }
-                    }
-                }
-
-                viewModel.processIntentInput(expandedInput)
+        return try {
+            startActivity(redirectIntent)
+            Toast.makeText(this, "Opening in $appName...", Toast.LENGTH_SHORT).show()
+            finish()
+            true
+        } catch (e: Exception) {
+            try {
+                val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl))
+                startActivity(fallbackIntent)
+                Toast.makeText(this, "Opening in $appName...", Toast.LENGTH_SHORT).show()
+                finish()
+                true
+            } catch (e2: Exception) {
+                Toast.makeText(this, "Could not launch $appName: ${e2.localizedMessage}", Toast.LENGTH_LONG).show()
+                false
             }
         }
     }

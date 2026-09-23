@@ -37,4 +37,11 @@ data class ConversionResult(
     val travelMode: String? = null,
     val isSuccess: Boolean = false,
     val errorMessage: String? = null
-)
+) {
+    fun hasLocationData(): Boolean {
+        return !query.isNullOrBlank() ||
+               !coordinates.isNullOrBlank() ||
+               !address.isNullOrBlank() ||
+               !destination.isNullOrBlank()
+    }
+}

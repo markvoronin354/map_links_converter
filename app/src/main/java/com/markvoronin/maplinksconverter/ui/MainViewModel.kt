@@ -56,23 +56,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        val targetApp = getTargetAppForInput(newUrl)
+        val initialResult = AppleMapsConverter.convert(newUrl, targetApp)
+
+        if (initialResult.isSuccess && initialResult.hasLocationData()) {
+            _uiState.update {
+                it.copy(
+                    inputUrl = newUrl,
+                    conversionResult = initialResult,
+                    isLoading = false
+                )
+            }
+            return
+        }
+
         _uiState.update {
             it.copy(
                 inputUrl = newUrl,
+                conversionResult = initialResult,
                 isLoading = UrlExpander.isShortenedUrl(newUrl)
             )
         }
 
         viewModelScope.launch {
             val expanded = UrlExpander.expandUrlIfNeeded(newUrl)
-            val targetApp = getTargetAppForInput(expanded)
-            val result = AppleMapsConverter.convert(expanded, targetApp)
-
-            _uiState.update {
-                it.copy(
-                    conversionResult = result,
-                    isLoading = false
-                )
+            if (expanded != newUrl) {
+                val updatedTargetApp = getTargetAppForInput(expanded)
+                val expandedResult = AppleMapsConverter.convert(expanded, updatedTargetApp)
+                _uiState.update {
+                    it.copy(
+                        conversionResult = expandedResult,
+                        isLoading = false
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(isLoading = false)
+                }
             }
         }
     }
