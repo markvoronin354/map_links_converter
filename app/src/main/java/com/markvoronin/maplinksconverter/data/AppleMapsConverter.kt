@@ -170,14 +170,16 @@ object AppleMapsConverter {
             }
         }
 
-        val coordinates = cleanCoordinates(llParam) ?: extractCoordinatesFromQuery(qParam)
+        val coordinates = cleanCoordinates(llParam) ?: extractCoordinatesFromQuery(qParam) ?: cleanCoordinates(toParam) ?: cleanCoordinates(addressParam)
         val query = cleanQuery(qParam)
         val address = addressParam?.trim()
 
         // 1. Directions mode
         if (!toParam.isNullOrBlank() || !fromParam.isNullOrBlank()) {
-            val destination = toParam ?: query ?: address ?: coordinates ?: ""
-            val origin = fromParam ?: ""
+            val rawDestination = toParam ?: query ?: address ?: coordinates ?: ""
+            val destination = cleanCoordinates(rawDestination) ?: cleanQuery(rawDestination) ?: rawDestination
+            val rawOrigin = fromParam ?: ""
+            val origin = cleanCoordinates(rawOrigin) ?: cleanQuery(rawOrigin) ?: rawOrigin
             val travelMode = parseTravelMode(dirflgParam)
 
             // Google Maps URL
@@ -390,7 +392,8 @@ object AppleMapsConverter {
 
     private fun cleanCoordinates(input: String?): String? {
         if (input.isNullOrBlank()) return null
-        val decoded = decode(input.trim())
+        var decoded = decode(input.trim())
+        decoded = decoded.replace(Regex("(?i)^(?:ll[.=:]|loc:|geo:|point:|latlng[=:]|@)"), "").trim()
         val matcher = LAT_LNG_REGEX.matcher(decoded)
         return if (matcher.matches()) {
             "${matcher.group(1)},${matcher.group(2)}"
@@ -401,25 +404,23 @@ object AppleMapsConverter {
 
     private fun extractCoordinatesFromQuery(query: String?): String? {
         if (query.isNullOrBlank()) return null
-        val decoded = decode(query.trim())
-        val matcher = LAT_LNG_REGEX.matcher(decoded)
-        return if (matcher.matches()) {
-            "${matcher.group(1)},${matcher.group(2)}"
-        } else {
-            null
-        }
+        return cleanCoordinates(query)
     }
 
     private fun isCoordinatesFormat(text: String): Boolean {
-        val decoded = decode(text.trim())
-        return LAT_LNG_REGEX.matcher(decoded).matches()
+        return cleanCoordinates(text) != null
     }
 
     private fun cleanQuery(q: String?): String? {
         if (q.isNullOrBlank()) return null
         val trimmed = q.trim()
         if (isRawUrl(trimmed)) return null
-        return trimmed
+        val coords = cleanCoordinates(trimmed)
+        if (coords != null) {
+            return coords
+        }
+        val cleaned = trimmed.replace(Regex("(?i)^(?:ll[.=:]|loc:|geo:|point:|latlng[=:]|@)"), "").trim()
+        return if (cleaned.isNotBlank()) cleaned else null
     }
 
     private fun decode(s: String): String {

@@ -14,6 +14,11 @@ object UrlExpander {
         Pattern.CASE_INSENSITIVE
     )
 
+    private val CANONICAL_URL_REGEX = Pattern.compile(
+        """<link\s+[^>]*rel=["']canonical["']\s+href=["']([^"']+)["']""",
+        Pattern.CASE_INSENSITIVE
+    )
+
     private val OG_TITLE_REGEX = Pattern.compile(
         """<meta\s+[^>]*property=["'](?:og:title|twitter:title)["']\s+content=["']([^"']+)["']""",
         Pattern.CASE_INSENSITIVE
@@ -25,7 +30,7 @@ object UrlExpander {
     )
 
     private val HTML_COORDS_REGEX = Pattern.compile(
-        """(?:geo\.position|icbm|center|ll|coordinate)["']?\s*(?:content|value)?=["']?(-?\d{1,3}\.\d+)\s*[,%2C;]\s*(-?\d{1,3}\.\d+)""",
+        """(?:geo\.position|icbm|center|ll|coordinate|latlng)["']?\s*(?:content|value)?=["']?(-?\d{1,3}\.\d+)\s*[,%2C;]\s*(-?\d{1,3}\.\d+)""",
         Pattern.CASE_INSENSITIVE
     )
 
@@ -99,6 +104,14 @@ object UrlExpander {
                             }
                         }
 
+                        val canonicalMatcher = CANONICAL_URL_REGEX.matcher(html)
+                        if (canonicalMatcher.find()) {
+                            val foundUrl = canonicalMatcher.group(1)
+                            if (!foundUrl.isNullOrBlank() && foundUrl != currentUrl) {
+                                return@withContext foundUrl
+                            }
+                        }
+
                         val titleMatcher = OG_TITLE_REGEX.matcher(html)
                         val title = if (titleMatcher.find()) {
                             titleMatcher.group(1)
@@ -137,8 +150,12 @@ object UrlExpander {
         var t = rawTitle.trim()
         t = t.replace(Regex("(?i)\\s*[-|•]\\s*Apple\\s+Maps"), "")
         t = t.replace(Regex("(?i)Apple\\s+Maps\\s*[-|•]\\s*"), "")
+        t = t.replace(Regex("(?i)\\s*[-|•]\\s*Waze"), "")
+        t = t.replace(Regex("(?i)Waze\\s*[-|•]\\s*"), "")
+        t = t.replace(Regex("(?i)\\s*[-|•]\\s*Google\\s+Maps"), "")
+        t = t.replace(Regex("(?i)Google\\s+Maps\\s*[-|•]\\s*"), "")
         t = t.trim()
-        return if (t.isNotBlank() && !t.equals("Apple Maps", ignoreCase = true)) t else null
+        return if (t.isNotBlank() && !t.equals("Apple Maps", ignoreCase = true) && !t.equals("Waze", ignoreCase = true) && !t.equals("Google Maps", ignoreCase = true)) t else null
     }
 
     fun isShortenedUrl(url: String): Boolean {
@@ -151,7 +168,11 @@ object UrlExpander {
                 lower.contains("apple.co") ||
                 lower.contains("maps.apple.com/p/") ||
                 lower.contains("maps.apple/p/") ||
-                (lower.contains("maps.apple") && !hasLocationalParams(lower))
+                lower.contains("waze.com/ul/") ||
+                lower.contains("ul.waze.com") ||
+                lower.contains("waze.com/ul?h=") ||
+                (lower.contains("maps.apple") && !hasLocationalParams(lower)) ||
+                (lower.contains("waze") && !hasLocationalParams(lower))
     }
 
     private fun hasLocationalParams(lowerUrl: String): Boolean {
@@ -162,6 +183,9 @@ object UrlExpander {
                 lowerUrl.contains("daddr=") ||
                 lowerUrl.contains("latlng=") ||
                 lowerUrl.contains("coordinate=") ||
+                lowerUrl.contains("center=") ||
+                lowerUrl.contains("to=") ||
+                lowerUrl.contains("destination=") ||
                 lowerUrl.contains("/place/")
     }
 }

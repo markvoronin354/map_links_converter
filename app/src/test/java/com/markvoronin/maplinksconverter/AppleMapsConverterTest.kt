@@ -4,6 +4,7 @@ import com.markvoronin.maplinksconverter.data.AppleMapsConverter
 import com.markvoronin.maplinksconverter.data.MapLinkSource
 import com.markvoronin.maplinksconverter.data.MapLinkType
 import com.markvoronin.maplinksconverter.data.MapTargetApp
+import com.markvoronin.maplinksconverter.data.UrlExpander
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -104,6 +105,24 @@ class AppleMapsConverterTest {
 
         assertFalse(result.isSuccess)
         assertNotNull(result.errorMessage)
+    }
+
+    @Test
+    fun testIsShortenedUrl_wazeShortUrl() {
+        assertTrue(UrlExpander.isShortenedUrl("https://waze.com/ul/hdhv7gd6bb"))
+        assertTrue(UrlExpander.isShortenedUrl("https://ul.waze.com/ul/hdhv7gd6bb"))
+        assertFalse(UrlExpander.isShortenedUrl("https://waze.com/ul?ll=37.7749,-122.4194&navigate=yes"))
+    }
+
+    @Test
+    fun testConvert_wazeLlPrefixCoordinates() {
+        val input = "https://www.waze.com/live-map/directions?to=ll.26.933777%2C-82.225821"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.GOOGLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals("26.933777,-82.225821", result.coordinates)
+        assertFalse(result.googleMapsUrl!!.contains("ll."))
+        assertTrue(result.googleMapsUrl!!.contains("26.933777%2C-82.225821"))
     }
 
     @Test
