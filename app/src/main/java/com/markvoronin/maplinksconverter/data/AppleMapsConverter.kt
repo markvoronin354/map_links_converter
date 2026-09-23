@@ -20,6 +20,11 @@ object AppleMapsConverter {
         "[/@=](-?\\d{1,3}\\.\\d+)\\s*[,%2C]\\s*(-?\\d{1,3}\\.\\d+)"
     )
 
+    private val APPLE_PLACE_NAME_REGEX = Pattern.compile(
+        "/place/([^/@?#]+)",
+        Pattern.CASE_INSENSITIVE
+    )
+
     private val GOOGLE_PLACE_COORDS_REGEX = Pattern.compile(
         "/@(-?\\d+(?:\\.\\d+)?),\\s*(-?\\d+(?:\\.\\d+)?)"
     )
@@ -94,13 +99,19 @@ object AppleMapsConverter {
 
         val queryParams = parseQueryParams(extractedUrl)
 
-        var qParam = queryParams["q"] ?: queryParams["query"]
+        var qParam = queryParams["q"]
+            ?: queryParams["query"]
+            ?: queryParams["name"]
+            ?: queryParams["title"]
+            ?: queryParams["place"]
         var llParam = queryParams["ll"]
             ?: queryParams["latlng"]
             ?: queryParams["sll"]
             ?: queryParams["center"]
             ?: queryParams["point"]
-        val addressParam = queryParams["address"]
+            ?: queryParams["coordinate"]
+            ?: queryParams["near"]
+        val addressParam = queryParams["address"] ?: queryParams["addr"]
         var toParam = queryParams["to"] ?: queryParams["destination"] ?: queryParams["daddr"]
         var fromParam = queryParams["from"] ?: queryParams["from_ll"] ?: queryParams["origin"] ?: queryParams["saddr"]
         val dirflgParam = queryParams["dirflg"] ?: queryParams["travelmode"]
@@ -109,6 +120,16 @@ object AppleMapsConverter {
             val pathCoordsMatcher = PATH_COORDS_REGEX.matcher(extractedUrl)
             if (pathCoordsMatcher.find()) {
                 llParam = "${pathCoordsMatcher.group(1)},${pathCoordsMatcher.group(2)}"
+            }
+        }
+
+        if (qParam.isNullOrBlank() && linkSource == MapLinkSource.APPLE_MAPS) {
+            val applePlaceMatcher = APPLE_PLACE_NAME_REGEX.matcher(extractedUrl)
+            if (applePlaceMatcher.find()) {
+                val rawPlace = applePlaceMatcher.group(1)
+                if (!rawPlace.isNullOrBlank() && !rawPlace.equals("p", ignoreCase = true) && !isCoordinatesFormat(rawPlace) && !isRawUrl(rawPlace)) {
+                    qParam = decode(rawPlace.replace("-", " ").replace("+", " "))
+                }
             }
         }
 
@@ -232,8 +253,15 @@ object AppleMapsConverter {
                 gMapsUrl = "https://www.google.com/maps/search/?api=1&query=${encode(coordinates)}"
             }
             else -> {
-                linkType = MapLinkType.UNKNOWN
-                gMapsUrl = "https://www.google.com/maps/search/?api=1&query=${encode(extractedUrl)}"
+                return ConversionResult(
+                    originalInput = input,
+                    extractedLinkUrl = extractedUrl,
+                    targetApp = targetApp,
+                    linkSource = linkSource,
+                    linkType = MapLinkType.UNKNOWN,
+                    isSuccess = false,
+                    errorMessage = "Link '$extractedUrl' is a general map homepage link and does not contain a specific place or location to convert."
+                )
             }
         }
 
@@ -389,7 +417,9 @@ object AppleMapsConverter {
 
     private fun cleanQuery(q: String?): String? {
         if (q.isNullOrBlank()) return null
-        return q.trim()
+        val trimmed = q.trim()
+        if (isRawUrl(trimmed)) return null
+        return trimmed
     }
 
     private fun decode(s: String): String {

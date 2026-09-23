@@ -45,8 +45,10 @@
 
                 <data android:scheme="https" />
                 <data android:scheme="http" />
+                <data android:host="maps.apple" />
                 <data android:host="maps.apple.com" />
                 <data android:host="www.maps.apple.com" />
+                <data android:host="apple.co" />
             </intent-filter>
 
             <intent-filter android:autoVerify="false">

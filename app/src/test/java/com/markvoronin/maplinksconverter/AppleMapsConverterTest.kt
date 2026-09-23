@@ -98,13 +98,12 @@ class AppleMapsConverterTest {
     }
 
     @Test
-    fun testConvert_shortAppleMapsUrl() {
-        val input = "https://maps.apple/p/EfDaGc5RHNY4Q0"
+    fun testConvert_bareRootUrl() {
+        val input = "https://maps.apple.com"
         val result = AppleMapsConverter.convert(input)
 
-        assertTrue(result.isSuccess)
-        assertEquals(MapLinkSource.APPLE_MAPS, result.linkSource)
-        assertEquals("https://www.google.com/maps/search/?api=1&query=https%3A%2F%2Fmaps.apple%2Fp%2FEfDaGc5RHNY4Q0", result.googleMapsUrl)
+        assertFalse(result.isSuccess)
+        assertNotNull(result.errorMessage)
     }
 
     @Test
