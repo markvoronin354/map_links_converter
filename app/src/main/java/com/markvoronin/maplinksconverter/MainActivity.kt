@@ -3,7 +3,6 @@ package com.markvoronin.maplinksconverter
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -106,7 +105,6 @@ class MainActivity : ComponentActivity() {
     private fun launchTargetApp(result: ConversionResult): Boolean {
         val redirectUrl = result.convertedUrl ?: return false
         val isWazeTarget = result.targetApp == MapTargetApp.WAZE
-        val appName = if (isWazeTarget) "Waze" else "Google Maps"
         val targetPackage = if (isWazeTarget) "com.waze" else "com.google.android.apps.maps"
 
         val redirectIntent = Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl)).apply {
@@ -115,18 +113,15 @@ class MainActivity : ComponentActivity() {
 
         return try {
             startActivity(redirectIntent)
-            Toast.makeText(this, "Opening in $appName...", Toast.LENGTH_SHORT).show()
             finish()
             true
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             try {
                 val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl))
                 startActivity(fallbackIntent)
-                Toast.makeText(this, "Opening in $appName...", Toast.LENGTH_SHORT).show()
                 finish()
                 true
-            } catch (e2: Exception) {
-                Toast.makeText(this, "Could not launch $appName: ${e2.localizedMessage}", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {
                 false
             }
         }
