@@ -104,11 +104,16 @@ class MainActivity : ComponentActivity() {
 
     private fun launchTargetApp(result: ConversionResult): Boolean {
         val redirectUrl = result.convertedUrl ?: return false
-        val isWazeTarget = result.targetApp == MapTargetApp.WAZE
-        val targetPackage = if (isWazeTarget) "com.waze" else "com.google.android.apps.maps"
+        val targetPackage = when (result.targetApp) {
+            MapTargetApp.WAZE -> "com.waze"
+            MapTargetApp.GOOGLE_MAPS -> "com.google.android.apps.maps"
+            MapTargetApp.APPLE_MAPS -> null
+        }
 
         val redirectIntent = Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl)).apply {
-            setPackage(targetPackage)
+            if (targetPackage != null) {
+                setPackage(targetPackage)
+            }
         }
 
         return try {

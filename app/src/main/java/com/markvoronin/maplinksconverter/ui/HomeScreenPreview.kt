@@ -22,7 +22,8 @@ val sampleUiStateWithResult = MainUiState(
         address = "Golden Gate Bridge, San Francisco, CA",
         convertedUrl = "https://www.google.com/maps/search/?api=1&query=37.8199,-122.4783",
         googleMapsUrl = "https://www.google.com/maps/search/?api=1&query=37.8199,-122.4783",
-        wazeUrl = "https://waze.com/ul?ll=37.8199,-122.4783&navigate=yes"
+        wazeUrl = "https://waze.com/ul?ll=37.8199,-122.4783&navigate=yes",
+        appleMapsUrl = "https://maps.apple.com/?q=Golden+Gate+Bridge&ll=37.8199,-122.4783"
     ),
     autoRedirectEnabled = true,
     appleMapsTarget = MapTargetApp.GOOGLE_MAPS,

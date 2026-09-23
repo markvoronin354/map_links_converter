@@ -65,8 +65,14 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -88,6 +94,7 @@ import com.markvoronin.maplinksconverter.data.ConversionResult
 import com.markvoronin.maplinksconverter.data.MapLinkSource
 import com.markvoronin.maplinksconverter.data.MapLinkType
 import com.markvoronin.maplinksconverter.data.MapTargetApp
+import com.markvoronin.maplinksconverter.data.toLinkSource
 import com.markvoronin.maplinksconverter.ui.theme.AppleMapsBg
 import com.markvoronin.maplinksconverter.ui.theme.AppleMapsColor
 import com.markvoronin.maplinksconverter.ui.theme.GoogleMapsBg
@@ -102,6 +109,7 @@ fun PremiumHomeScreenContent(
     uiState: MainUiState,
     onInputUrlChanged: (String) -> Unit,
     onClearInput: () -> Unit,
+    onResultTargetChanged: (MapTargetApp) -> Unit = {},
     onAppleMapsTargetChanged: (MapTargetApp) -> Unit,
     onGoogleMapsTargetChanged: (MapTargetApp) -> Unit,
     onWazeTargetChanged: (MapTargetApp) -> Unit,
@@ -188,7 +196,8 @@ fun PremiumHomeScreenContent(
                 PremiumConversionResultCard(
                     result = result,
                     onOpenUrl = onOpenUrl,
-                    onCopyUrl = onCopyUrl
+                    onCopyUrl = onCopyUrl,
+                    onResultTargetChanged = onResultTargetChanged
                 )
             }
 
@@ -342,7 +351,8 @@ private fun PremiumInputCard(
 private fun PremiumConversionResultCard(
     result: ConversionResult,
     onOpenUrl: (String) -> Unit,
-    onCopyUrl: (String, String) -> Unit
+    onCopyUrl: (String, String) -> Unit,
+    onResultTargetChanged: (MapTargetApp) -> Unit = {}
 ) {
     val containerBorder = if (result.isSuccess) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
@@ -393,7 +403,11 @@ private fun PremiumConversionResultCard(
                         )
                     }
 
-                    BrandPill(target = result.targetApp)
+                    TargetDropdownPill(
+                        currentTarget = result.targetApp,
+                        sourceApp = result.linkSource,
+                        onTargetSelected = onResultTargetChanged
+                    )
                 }
 
                 // Place Name & Type Badge
@@ -446,7 +460,11 @@ private fun PremiumConversionResultCard(
 
                 // Converted URL Code Box
                 result.convertedUrl?.let { cUrl ->
-                    val targetName = if (result.targetApp == MapTargetApp.WAZE) "Waze" else "Google Maps"
+                    val targetName = when (result.targetApp) {
+                        MapTargetApp.GOOGLE_MAPS -> "Google Maps"
+                        MapTargetApp.WAZE -> "Waze"
+                        MapTargetApp.APPLE_MAPS -> "Apple Maps"
+                    }
 
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Text(
@@ -512,22 +530,35 @@ private fun PremiumConversionResultCard(
                             }
                         }
 
-                        // Alt App Option
-                        val altUrl = if (result.targetApp == MapTargetApp.WAZE) result.googleMapsUrl else result.wazeUrl
-                        val altName = if (result.targetApp == MapTargetApp.WAZE) "Google Maps" else "Waze"
-                        if (!altUrl.isNullOrBlank()) {
-                            OutlinedButton(
-                                onClick = { onOpenUrl(altUrl) },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.OpenInNew,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Or open in $altName", fontSize = 13.sp)
+                        // Alt App Options
+                        val altApps = MapTargetApp.entries.filter {
+                            it != result.targetApp && it.toLinkSource() != result.linkSource
+                        }
+                        for (altTarget in altApps) {
+                            val altUrl = when (altTarget) {
+                                MapTargetApp.GOOGLE_MAPS -> result.googleMapsUrl
+                                MapTargetApp.WAZE -> result.wazeUrl
+                                MapTargetApp.APPLE_MAPS -> result.appleMapsUrl
+                            }
+                            val altName = when (altTarget) {
+                                MapTargetApp.GOOGLE_MAPS -> "Google Maps"
+                                MapTargetApp.WAZE -> "Waze"
+                                MapTargetApp.APPLE_MAPS -> "Apple Maps"
+                            }
+                            if (!altUrl.isNullOrBlank()) {
+                                OutlinedButton(
+                                    onClick = { onOpenUrl(altUrl) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.OpenInNew,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Or open in $altName", fontSize = 13.sp)
+                                }
                             }
                         }
                     }
@@ -555,18 +586,100 @@ private fun PremiumConversionResultCard(
 }
 
 @Composable
+private fun TargetDropdownPill(
+    currentTarget: MapTargetApp,
+    sourceApp: MapLinkSource,
+    onTargetSelected: (MapTargetApp) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    val availableTargets = remember(sourceApp) {
+        MapTargetApp.entries.filter { it.toLinkSource() != sourceApp }
+    }
+
+    val (name, bgColor, textColor) = when (currentTarget) {
+        MapTargetApp.GOOGLE_MAPS -> Triple("Google Maps", GoogleMapsBg, GoogleMapsColor)
+        MapTargetApp.WAZE -> Triple("Waze", WazeBg, WazeColor)
+        MapTargetApp.APPLE_MAPS -> Triple("Apple Maps", AppleMapsBg, AppleMapsColor)
+    }
+
+    Box {
+        Surface(
+            onClick = { expanded = true },
+            shape = RoundedCornerShape(8.dp),
+            color = bgColor
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor
+                )
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = "Select Target Map",
+                    tint = textColor,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            availableTargets.forEach { target ->
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val targetName = when (target) {
+                                MapTargetApp.GOOGLE_MAPS -> "Google Maps"
+                                MapTargetApp.WAZE -> "Waze"
+                                MapTargetApp.APPLE_MAPS -> "Apple Maps"
+                            }
+                            Text(
+                                text = targetName,
+                                fontWeight = if (target == currentTarget) FontWeight.Bold else FontWeight.Normal
+                            )
+                            if (target == currentTarget) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    },
+                    onClick = {
+                        expanded = false
+                        onTargetSelected(target)
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun BrandPill(source: MapLinkSource? = null, target: MapTargetApp? = null) {
     val name = when {
-        source == MapLinkSource.APPLE_MAPS -> "Apple Maps"
-        source == MapLinkSource.GOOGLE_MAPS -> "Google Maps"
-        source == MapLinkSource.WAZE -> "Waze"
-        target == MapTargetApp.GOOGLE_MAPS -> "Google Maps"
-        target == MapTargetApp.WAZE -> "Waze"
+        source == MapLinkSource.APPLE_MAPS || target == MapTargetApp.APPLE_MAPS -> "Apple Maps"
+        source == MapLinkSource.GOOGLE_MAPS || target == MapTargetApp.GOOGLE_MAPS -> "Google Maps"
+        source == MapLinkSource.WAZE || target == MapTargetApp.WAZE -> "Waze"
         else -> "Map Link"
     }
 
     val (bgColor, textColor) = when {
-        source == MapLinkSource.APPLE_MAPS -> AppleMapsBg to AppleMapsColor
+        source == MapLinkSource.APPLE_MAPS || target == MapTargetApp.APPLE_MAPS -> AppleMapsBg to AppleMapsColor
         source == MapLinkSource.GOOGLE_MAPS || target == MapTargetApp.GOOGLE_MAPS -> GoogleMapsBg to GoogleMapsColor
         source == MapLinkSource.WAZE || target == MapTargetApp.WAZE -> WazeBg to WazeColor
         else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
@@ -682,18 +795,21 @@ private fun PremiumTargetSelectionCard(
             TargetSegmentRow(
                 sourceLabel = "Apple Maps links",
                 selectedTarget = appleMapsTarget,
+                sourceApp = MapLinkSource.APPLE_MAPS,
                 onTargetSelected = onAppleMapsTargetChanged
             )
 
             TargetSegmentRow(
                 sourceLabel = "Google Maps links",
                 selectedTarget = googleMapsTarget,
+                sourceApp = MapLinkSource.GOOGLE_MAPS,
                 onTargetSelected = onGoogleMapsTargetChanged
             )
 
             TargetSegmentRow(
                 sourceLabel = "Waze links",
                 selectedTarget = wazeTarget,
+                sourceApp = MapLinkSource.WAZE,
                 onTargetSelected = onWazeTargetChanged
             )
         }
@@ -704,8 +820,15 @@ private fun PremiumTargetSelectionCard(
 private fun TargetSegmentRow(
     sourceLabel: String,
     selectedTarget: MapTargetApp,
+    sourceApp: MapLinkSource,
     onTargetSelected: (MapTargetApp) -> Unit
 ) {
+    val availableTargets = remember(sourceApp) {
+        MapTargetApp.entries.filter { it.toLinkSource() != sourceApp }
+    }
+
+    val selectedIndex = availableTargets.indexOf(selectedTarget).coerceAtLeast(0)
+
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = sourceLabel,
@@ -720,28 +843,26 @@ private fun TargetSegmentRow(
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                 .padding(3.dp)
         ) {
-            val selectedIndex = if (selectedTarget == MapTargetApp.GOOGLE_MAPS) 0 else 1
-            val targetBias = if (selectedIndex == 0) -1f else 1f
-            val animatedBias by animateFloatAsState(
-                targetValue = targetBias,
+            val animatedIndex by animateFloatAsState(
+                targetValue = selectedIndex.toFloat(),
                 animationSpec = spring(
                     stiffness = Spring.StiffnessMediumLow,
                     dampingRatio = Spring.DampingRatioLowBouncy
                 ),
-                label = "segmentBias"
+                label = "segmentIndex"
             )
 
-            // Smoothly sliding selection indicator pill
+            // Smoothly sliding selection indicator pill across available targets
+            val count = availableTargets.size
             Box(
                 modifier = Modifier
                     .matchParentSize()
                     .layout { measurable, constraints ->
-                        val spacing = 4.dp.roundToPx()
-                        val itemWidth = (constraints.maxWidth - spacing) / 2
+                        val itemWidth = constraints.maxWidth / count
                         val placeable = measurable.measure(
                             Constraints.fixed(itemWidth, constraints.maxHeight)
                         )
-                        val xOffset = ((constraints.maxWidth - itemWidth) * ((animatedBias + 1f) / 2f)).roundToInt()
+                        val xOffset = (itemWidth * animatedIndex).roundToInt()
                         layout(constraints.maxWidth, constraints.maxHeight) {
                             placeable.place(xOffset, 0)
                         }
@@ -752,21 +873,21 @@ private fun TargetSegmentRow(
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                SegmentOption(
-                    label = "Google Maps",
-                    isSelected = selectedTarget == MapTargetApp.GOOGLE_MAPS,
-                    onClick = { onTargetSelected(MapTargetApp.GOOGLE_MAPS) },
-                    modifier = Modifier.weight(1f)
-                )
-
-                SegmentOption(
-                    label = "Waze",
-                    isSelected = selectedTarget == MapTargetApp.WAZE,
-                    onClick = { onTargetSelected(MapTargetApp.WAZE) },
-                    modifier = Modifier.weight(1f)
-                )
+                availableTargets.forEach { target ->
+                    val label = when (target) {
+                        MapTargetApp.GOOGLE_MAPS -> "Google"
+                        MapTargetApp.WAZE -> "Waze"
+                        MapTargetApp.APPLE_MAPS -> "Apple"
+                    }
+                    SegmentOption(
+                        label = label,
+                        isSelected = selectedTarget == target,
+                        onClick = { onTargetSelected(target) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
     }

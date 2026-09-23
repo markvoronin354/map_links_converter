@@ -97,6 +97,16 @@ object AppleMapsConverter {
             else -> MapLinkSource.UNKNOWN
         }
 
+        var effectiveTargetApp = targetApp
+        if (effectiveTargetApp.toLinkSource() == linkSource) {
+            effectiveTargetApp = when (linkSource) {
+                MapLinkSource.GOOGLE_MAPS -> MapTargetApp.WAZE
+                MapLinkSource.WAZE -> MapTargetApp.GOOGLE_MAPS
+                MapLinkSource.APPLE_MAPS -> MapTargetApp.GOOGLE_MAPS
+                MapLinkSource.UNKNOWN -> MapTargetApp.GOOGLE_MAPS
+            }
+        }
+
         val queryParams = parseQueryParams(extractedUrl)
 
         var qParam = queryParams["q"]
@@ -203,17 +213,44 @@ object AppleMapsConverter {
                 destination = destination
             )
 
+            // Apple Maps URL
+            val appleMapsUrlBuilder = StringBuilder("https://maps.apple.com/?daddr=")
+            if (destination.isNotBlank()) {
+                appleMapsUrlBuilder.append(encode(destination))
+            }
+            if (origin.isNotBlank()) {
+                appleMapsUrlBuilder.append("&saddr=").append(encode(origin))
+            }
+            if (!travelMode.isNullOrBlank()) {
+                val dirFlg = when (travelMode.lowercase()) {
+                    "driving" -> "d"
+                    "walking" -> "w"
+                    "transit" -> "r"
+                    "bicycling" -> "r"
+                    else -> null
+                }
+                if (dirFlg != null) {
+                    appleMapsUrlBuilder.append("&dirflg=").append(dirFlg)
+                }
+            }
+            val appleMapsUrl = appleMapsUrlBuilder.toString()
+
             val geoUri = if (destination.isNotBlank()) "geo:0,0?q=${encode(destination)}" else "geo:0,0"
 
-            val convertedUrl = if (targetApp == MapTargetApp.WAZE) wazeUrl else gMapsUrl
+            val convertedUrl = when (effectiveTargetApp) {
+                MapTargetApp.WAZE -> wazeUrl
+                MapTargetApp.APPLE_MAPS -> appleMapsUrl
+                MapTargetApp.GOOGLE_MAPS -> gMapsUrl
+            }
 
             return ConversionResult(
                 originalInput = input,
                 extractedLinkUrl = extractedUrl,
-                targetApp = targetApp,
+                targetApp = effectiveTargetApp,
                 convertedUrl = convertedUrl,
                 googleMapsUrl = gMapsUrl,
                 wazeUrl = wazeUrl,
+                appleMapsUrl = appleMapsUrl,
                 geoUri = geoUri,
                 linkSource = linkSource,
                 linkType = MapLinkType.DIRECTIONS,
@@ -258,7 +295,7 @@ object AppleMapsConverter {
                 return ConversionResult(
                     originalInput = input,
                     extractedLinkUrl = extractedUrl,
-                    targetApp = targetApp,
+                    targetApp = effectiveTargetApp,
                     linkSource = linkSource,
                     linkType = MapLinkType.UNKNOWN,
                     isSuccess = false,
@@ -275,6 +312,27 @@ object AppleMapsConverter {
             fallbackUrl = extractedUrl
         )
 
+        val appleMapsUrl = when {
+            !query.isNullOrBlank() -> {
+                if (!coordinates.isNullOrBlank() && !isCoordinatesFormat(query)) {
+                    "https://maps.apple.com/?q=${encode(query)}&ll=${encode(coordinates)}"
+                } else {
+                    "https://maps.apple.com/?q=${encode(query)}"
+                }
+            }
+            !address.isNullOrBlank() -> {
+                if (!coordinates.isNullOrBlank()) {
+                    "https://maps.apple.com/?q=${encode(address)}&ll=${encode(coordinates)}"
+                } else {
+                    "https://maps.apple.com/?q=${encode(address)}"
+                }
+            }
+            !coordinates.isNullOrBlank() -> {
+                "https://maps.apple.com/?q=${encode(coordinates)}&ll=${encode(coordinates)}"
+            }
+            else -> "https://maps.apple.com/"
+        }
+
         val geoUri = when {
             !coordinates.isNullOrBlank() && !query.isNullOrBlank() -> "geo:$coordinates?q=${encode(query)}"
             !coordinates.isNullOrBlank() -> "geo:$coordinates?q=$coordinates"
@@ -283,15 +341,20 @@ object AppleMapsConverter {
             else -> "geo:0,0?q=${encode(extractedUrl)}"
         }
 
-        val convertedUrl = if (targetApp == MapTargetApp.WAZE) wazeUrl else gMapsUrl
+        val convertedUrl = when (effectiveTargetApp) {
+            MapTargetApp.WAZE -> wazeUrl
+            MapTargetApp.APPLE_MAPS -> appleMapsUrl
+            MapTargetApp.GOOGLE_MAPS -> gMapsUrl
+        }
 
         return ConversionResult(
             originalInput = input,
             extractedLinkUrl = extractedUrl,
-            targetApp = targetApp,
+            targetApp = effectiveTargetApp,
             convertedUrl = convertedUrl,
             googleMapsUrl = gMapsUrl,
             wazeUrl = wazeUrl,
+            appleMapsUrl = appleMapsUrl,
             geoUri = geoUri,
             linkSource = linkSource,
             linkType = linkType,

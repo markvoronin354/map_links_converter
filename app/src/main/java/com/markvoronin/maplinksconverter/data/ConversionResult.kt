@@ -16,7 +16,25 @@ enum class MapLinkSource {
 
 enum class MapTargetApp {
     GOOGLE_MAPS,
-    WAZE
+    WAZE,
+    APPLE_MAPS
+}
+
+fun MapLinkSource.toTargetApp(): MapTargetApp? {
+    return when (this) {
+        MapLinkSource.GOOGLE_MAPS -> MapTargetApp.GOOGLE_MAPS
+        MapLinkSource.WAZE -> MapTargetApp.WAZE
+        MapLinkSource.APPLE_MAPS -> MapTargetApp.APPLE_MAPS
+        MapLinkSource.UNKNOWN -> null
+    }
+}
+
+fun MapTargetApp.toLinkSource(): MapLinkSource {
+    return when (this) {
+        MapTargetApp.GOOGLE_MAPS -> MapLinkSource.GOOGLE_MAPS
+        MapTargetApp.WAZE -> MapLinkSource.WAZE
+        MapTargetApp.APPLE_MAPS -> MapLinkSource.APPLE_MAPS
+    }
 }
 
 data class ConversionResult(
@@ -26,6 +44,7 @@ data class ConversionResult(
     val convertedUrl: String? = null,
     val googleMapsUrl: String? = null,
     val wazeUrl: String? = null,
+    val appleMapsUrl: String? = null,
     val geoUri: String? = null,
     val linkSource: MapLinkSource = MapLinkSource.UNKNOWN,
     val linkType: MapLinkType = MapLinkType.UNKNOWN,
