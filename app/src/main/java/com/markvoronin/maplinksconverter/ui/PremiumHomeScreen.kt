@@ -21,13 +21,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
@@ -39,7 +37,6 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -116,7 +113,7 @@ fun PremiumHomeScreenContent(
     onToggleAutoRedirect: (Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
     onCopyUrl: (label: String, url: String) -> Unit,
-    onOpenLinkSettings: () -> Unit
+    onOpenLinkSettings: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -189,7 +186,7 @@ fun PremiumHomeScreenContent(
                             onInputUrlChanged(pastedText)
                         }
                     }
-                }
+                },
             )
 
             uiState.conversionResult?.let { result ->
@@ -228,7 +225,7 @@ private fun PremiumInputCard(
     isLoading: Boolean,
     onInputChange: (String) -> Unit,
     onClear: () -> Unit,
-    onPaste: () -> Unit
+    onPaste: () -> Unit,
 ) {
     Surface(
         modifier = Modifier
@@ -552,7 +549,7 @@ private fun PremiumConversionResultCard(
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.OpenInNew,
+                                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
                                         contentDescription = null,
                                         modifier = Modifier.size(16.dp)
                                     )
@@ -591,7 +588,7 @@ private fun TargetDropdownPill(
     sourceApp: MapLinkSource,
     onTargetSelected: (MapTargetApp) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(value = false) }
 
     val availableTargets = remember(sourceApp) {
         MapTargetApp.entries.filter { it.toLinkSource() != sourceApp }
@@ -672,16 +669,16 @@ private fun TargetDropdownPill(
 @Composable
 private fun BrandPill(source: MapLinkSource? = null, target: MapTargetApp? = null) {
     val name = when {
-        source == MapLinkSource.APPLE_MAPS || target == MapTargetApp.APPLE_MAPS -> "Apple Maps"
-        source == MapLinkSource.GOOGLE_MAPS || target == MapTargetApp.GOOGLE_MAPS -> "Google Maps"
-        source == MapLinkSource.WAZE || target == MapTargetApp.WAZE -> "Waze"
+        (source == MapLinkSource.APPLE_MAPS) || (target == MapTargetApp.APPLE_MAPS) -> "Apple Maps"
+        (source == MapLinkSource.GOOGLE_MAPS) || (target == MapTargetApp.GOOGLE_MAPS) -> "Google Maps"
+        (source == MapLinkSource.WAZE) || (target == MapTargetApp.WAZE) -> "Waze"
         else -> "Map Link"
     }
 
     val (bgColor, textColor) = when {
-        source == MapLinkSource.APPLE_MAPS || target == MapTargetApp.APPLE_MAPS -> AppleMapsBg to AppleMapsColor
-        source == MapLinkSource.GOOGLE_MAPS || target == MapTargetApp.GOOGLE_MAPS -> GoogleMapsBg to GoogleMapsColor
-        source == MapLinkSource.WAZE || target == MapTargetApp.WAZE -> WazeBg to WazeColor
+        (source == MapLinkSource.APPLE_MAPS) || (target == MapTargetApp.APPLE_MAPS) -> AppleMapsBg to AppleMapsColor
+        (source == MapLinkSource.GOOGLE_MAPS) || (target == MapTargetApp.GOOGLE_MAPS) -> GoogleMapsBg to GoogleMapsColor
+        (source == MapLinkSource.WAZE) || (target == MapTargetApp.WAZE) -> WazeBg to WazeColor
         else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }
 

@@ -1,12 +1,12 @@
 package com.markvoronin.maplinksconverter
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.markvoronin.maplinksconverter.data.AppleMapsConverter
 import com.markvoronin.maplinksconverter.data.ConversionResult
@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
         if (intent == null) return false
 
         val input = extractInputFromIntent(intent) ?: return false
-        val isExternalIntent = intent.action == Intent.ACTION_VIEW || intent.action == Intent.ACTION_SEND
+        val isExternalIntent = (intent.action == Intent.ACTION_VIEW) || (intent.action == Intent.ACTION_SEND)
 
         if (isExternalIntent && viewModel.isAutoRedirectEnabled()) {
             val targetApp = viewModel.getTargetAppForInput(input)
@@ -110,10 +110,8 @@ class MainActivity : ComponentActivity() {
             MapTargetApp.APPLE_MAPS -> null
         }
 
-        val redirectIntent = Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl)).apply {
-            if (targetPackage != null) {
-                setPackage(targetPackage)
-            }
+        val redirectIntent = Intent(Intent.ACTION_VIEW, redirectUrl.toUri()).apply {
+            targetPackage?.let { setPackage(it) }
         }
 
         return try {
@@ -122,7 +120,7 @@ class MainActivity : ComponentActivity() {
             true
         } catch (_: Exception) {
             try {
-                val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse(redirectUrl))
+                val fallbackIntent = Intent(Intent.ACTION_VIEW, redirectUrl.toUri())
                 startActivity(fallbackIntent)
                 finish()
                 true

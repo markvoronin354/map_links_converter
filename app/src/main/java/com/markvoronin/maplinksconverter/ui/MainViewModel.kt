@@ -3,6 +3,7 @@ package com.markvoronin.maplinksconverter.ui
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.markvoronin.maplinksconverter.data.AppleMapsConverter
@@ -25,14 +26,14 @@ data class MainUiState(
     val googleMapsTarget: MapTargetApp = MapTargetApp.WAZE,
     val wazeTarget: MapTargetApp = MapTargetApp.GOOGLE_MAPS,
     val isLoading: Boolean = false,
-    val userNotice: String? = null
+    val userNotice: String? = null,
 )
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs: SharedPreferences = application.getSharedPreferences(
         PREFS_NAME,
-        Context.MODE_PRIVATE
+        Context.MODE_PRIVATE,
     )
 
     private val _uiState = MutableStateFlow(
@@ -135,21 +136,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setAppleMapsTarget(target: MapTargetApp) {
         val validTarget = validateTarget(target, MapLinkSource.APPLE_MAPS)
-        prefs.edit().putString(KEY_TARGET_APPLE_MAPS, validTarget.name).apply()
+        prefs.edit { putString(KEY_TARGET_APPLE_MAPS, validTarget.name) }
         _uiState.update { it.copy(appleMapsTarget = validTarget) }
         reconvertCurrentInput()
     }
 
     fun setGoogleMapsTarget(target: MapTargetApp) {
         val validTarget = validateTarget(target, MapLinkSource.GOOGLE_MAPS)
-        prefs.edit().putString(KEY_TARGET_GOOGLE_MAPS, validTarget.name).apply()
+        prefs.edit { putString(KEY_TARGET_GOOGLE_MAPS, validTarget.name) }
         _uiState.update { it.copy(googleMapsTarget = validTarget) }
         reconvertCurrentInput()
     }
 
     fun setWazeTarget(target: MapTargetApp) {
         val validTarget = validateTarget(target, MapLinkSource.WAZE)
-        prefs.edit().putString(KEY_TARGET_WAZE, validTarget.name).apply()
+        prefs.edit { putString(KEY_TARGET_WAZE, validTarget.name) }
         _uiState.update { it.copy(wazeTarget = validTarget) }
         reconvertCurrentInput()
     }
@@ -173,7 +174,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setAutoRedirectEnabled(enabled: Boolean) {
-        prefs.edit().putBoolean(KEY_AUTO_REDIRECT, enabled).apply()
+        prefs.edit { putBoolean(KEY_AUTO_REDIRECT, enabled) }
         _uiState.update { it.copy(autoRedirectEnabled = enabled) }
     }
 
@@ -206,7 +207,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val name = prefs.getString(key, null) ?: return default
         return try {
             MapTargetApp.valueOf(name)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             default
         }
     }

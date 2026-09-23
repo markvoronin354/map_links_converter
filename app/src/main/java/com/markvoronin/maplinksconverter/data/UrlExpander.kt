@@ -11,17 +11,17 @@ object UrlExpander {
 
     private val OG_URL_REGEX = Pattern.compile(
         """<meta\s+[^>]*property=["']og:url["']\s+content=["']([^"']+)["']""",
-        Pattern.CASE_INSENSITIVE
+        Pattern.CASE_INSENSITIVE,
     )
 
     private val CANONICAL_URL_REGEX = Pattern.compile(
         """<link\s+[^>]*rel=["']canonical["']\s+href=["']([^"']+)["']""",
-        Pattern.CASE_INSENSITIVE
+        Pattern.CASE_INSENSITIVE,
     )
 
     private val OG_TITLE_REGEX = Pattern.compile(
         """<meta\s+[^>]*property=["'](?:og:title|twitter:title)["']\s+content=["']([^"']+)["']""",
-        Pattern.CASE_INSENSITIVE
+        Pattern.CASE_INSENSITIVE,
     )
 
     private val TITLE_TAG_REGEX = Pattern.compile(
@@ -61,12 +61,12 @@ object UrlExpander {
                 val finalUrl = connection.url.toString()
                 val location = connection.getHeaderField("Location")
 
-                if (finalUrl != currentUrl && !isShortenedUrl(finalUrl)) {
+                if ((finalUrl != currentUrl) && !isShortenedUrl(finalUrl)) {
                     connection.disconnect()
                     return@withContext finalUrl
                 }
 
-                if (!location.isNullOrBlank() && responseCode in 300..399) {
+                if ((!location.isNullOrBlank()) && (responseCode in 300..399)) {
                     connection.disconnect()
                     currentUrl = if (location.startsWith("http", ignoreCase = true)) {
                         location
@@ -131,7 +131,7 @@ object UrlExpander {
                         } else if (!cleanedTitle.isNullOrBlank()) {
                             return@withContext "https://maps.apple.com/?q=${URLEncoder.encode(cleanedTitle, "UTF-8")}"
                         }
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         connection.disconnect()
                     }
                 } else {
@@ -140,7 +140,7 @@ object UrlExpander {
                 break
             }
             currentUrl
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             trimmed
         }
     }

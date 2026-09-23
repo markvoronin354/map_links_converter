@@ -8,16 +8,16 @@ object AppleMapsConverter {
 
     private val MAP_LINK_REGEX = Pattern.compile(
         "https?://(?:[a-zA-Z0-9-]+\\.)*(?:maps\\.apple\\.com|maps\\.apple|apple\\.co|waze\\.com|google\\.com|goo\\.gl)[^\\s<>\"]*|waze://[^\\s<>\"]*",
-        Pattern.CASE_INSENSITIVE
+        Pattern.CASE_INSENSITIVE,
     )
 
     private val LAT_LNG_REGEX = Pattern.compile(
         "^(-?\\d+(?:\\.\\d+)?)\\s*[,%2C]\\s*(-?\\d+(?:\\.\\d+)?)$",
-        Pattern.CASE_INSENSITIVE
+        Pattern.CASE_INSENSITIVE,
     )
 
     private val PATH_COORDS_REGEX = Pattern.compile(
-        "[/@=](-?\\d{1,3}\\.\\d+)\\s*[,%2C]\\s*(-?\\d{1,3}\\.\\d+)"
+        "[/@=](-?\\d{1,3}\\.\\d+)\\s*[,%2C]\\s*(-?\\d{1,3}\\.\\d+)",
     )
 
     private val APPLE_PLACE_NAME_REGEX = Pattern.compile(
@@ -133,7 +133,7 @@ object AppleMapsConverter {
             }
         }
 
-        if (qParam.isNullOrBlank() && linkSource == MapLinkSource.APPLE_MAPS) {
+        if (qParam.isNullOrBlank() && (linkSource == MapLinkSource.APPLE_MAPS)) {
             val applePlaceMatcher = APPLE_PLACE_NAME_REGEX.matcher(extractedUrl)
             if (applePlaceMatcher.find()) {
                 val rawPlace = applePlaceMatcher.group(1)
@@ -161,7 +161,7 @@ object AppleMapsConverter {
                 val placeMatcher = GOOGLE_PLACE_NAME_REGEX.matcher(extractedUrl)
                 if (placeMatcher.find()) {
                     val rawPlaceName = placeMatcher.group(1)
-                    if (rawPlaceName != null && !isCoordinatesFormat(rawPlaceName)) {
+                    if ((rawPlaceName != null) && !isCoordinatesFormat(rawPlaceName)) {
                         qParam = decode(rawPlaceName.replace("+", " "))
                     }
                 }
@@ -172,7 +172,7 @@ object AppleMapsConverter {
                 if (dirMatcher.find()) {
                     val rawOrigin = dirMatcher.group(1)
                     val rawDest = dirMatcher.group(2)
-                    if (rawOrigin != null && rawDest != null) {
+                    if ((rawOrigin != null) && (rawDest != null)) {
                         fromParam = decode(rawOrigin.replace("+", " "))
                         toParam = decode(rawDest.replace("+", " "))
                     }
@@ -229,8 +229,8 @@ object AppleMapsConverter {
                     "bicycling" -> "r"
                     else -> null
                 }
-                if (dirFlg != null) {
-                    appleMapsUrlBuilder.append("&dirflg=").append(dirFlg)
+                dirFlg?.let {
+                    appleMapsUrlBuilder.append("&dirflg=").append(it)
                 }
             }
             val appleMapsUrl = appleMapsUrlBuilder.toString()
@@ -257,8 +257,8 @@ object AppleMapsConverter {
                 query = query,
                 coordinates = coordinates,
                 address = address,
-                origin = if (origin.isNotBlank()) origin else null,
-                destination = if (destination.isNotBlank()) destination else null,
+                origin = origin.ifBlank { null },
+                destination = destination.ifBlank { null },
                 travelMode = travelMode,
                 isSuccess = true
             )
@@ -308,8 +308,7 @@ object AppleMapsConverter {
             query = query,
             coordinates = coordinates,
             address = address,
-            destination = null,
-            fallbackUrl = extractedUrl
+            destination = null
         )
 
         val appleMapsUrl = when {
@@ -369,8 +368,7 @@ object AppleMapsConverter {
         query: String?,
         coordinates: String?,
         address: String?,
-        destination: String?,
-        fallbackUrl: String? = null
+        destination: String?
     ): String {
         val dest = destination?.trim()
         if (!dest.isNullOrBlank() && !isRawUrl(dest)) {
@@ -483,13 +481,13 @@ object AppleMapsConverter {
             return coords
         }
         val cleaned = trimmed.replace(Regex("(?i)^(?:ll[.=:]|loc:|geo:|point:|latlng[=:]|@)"), "").trim()
-        return if (cleaned.isNotBlank()) cleaned else null
+        return cleaned.ifBlank { null }
     }
 
     private fun decode(s: String): String {
         return try {
             URLDecoder.decode(s, "UTF-8")
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             s
         }
     }
@@ -497,7 +495,7 @@ object AppleMapsConverter {
     private fun encode(s: String): String {
         return try {
             URLEncoder.encode(s, "UTF-8")
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             s
         }
     }

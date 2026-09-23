@@ -27,7 +27,7 @@ private val PremiumDarkColorScheme = darkColorScheme(
     surfaceVariant = SlateSurfaceVariant,
     onSurfaceVariant = TextSecondaryDark,
     outline = SlateBorder,
-    outlineVariant = Color(0xFF1E293B)
+    outlineVariant = Color(0xFF1E293B),
 )
 
 private val PremiumLightColorScheme = lightColorScheme(
@@ -50,13 +50,13 @@ private val PremiumLightColorScheme = lightColorScheme(
     surfaceVariant = LightSurfaceVariant,
     onSurfaceVariant = TextSecondaryLight,
     outline = LightBorder,
-    outlineVariant = Color(0xFFCBD5E1)
+    outlineVariant = Color(0xFFCBD5E1),
 )
 
 @Composable
 fun MapLinksConverterTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) PremiumDarkColorScheme else PremiumLightColorScheme
 

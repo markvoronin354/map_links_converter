@@ -55,7 +55,7 @@ data class ConversionResult(
     val destination: String? = null,
     val travelMode: String? = null,
     val isSuccess: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
 ) {
     fun hasLocationData(): Boolean {
         return !query.isNullOrBlank() ||

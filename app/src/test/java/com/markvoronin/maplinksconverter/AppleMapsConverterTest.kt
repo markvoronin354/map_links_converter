@@ -176,8 +176,9 @@ class AppleMapsConverterTest {
 
         assertTrue(result.isSuccess)
         assertEquals("26.933777,-82.225821", result.coordinates)
-        assertFalse(result.googleMapsUrl!!.contains("ll."))
-        assertTrue(result.googleMapsUrl!!.contains("26.933777%2C-82.225821"))
+        val googleMapsUrl = requireNotNull(result.googleMapsUrl)
+        assertFalse(googleMapsUrl.contains("ll."))
+        assertTrue(googleMapsUrl.contains("26.933777%2C-82.225821"))
     }
 
     @Test

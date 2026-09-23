@@ -5,7 +5,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -13,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.net.toUri
 import com.markvoronin.maplinksconverter.data.MapTargetApp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,7 +32,7 @@ fun HomeScreen(viewModel: MainViewModel) {
         onToggleAutoRedirect = { viewModel.setAutoRedirectEnabled(it) },
         onOpenUrl = { url -> openUrlInBrowserOrMaps(context, url) },
         onCopyUrl = { label, url -> copyToClipboard(context, label, url) },
-        onOpenLinkSettings = { openAppSupportedLinksSettings(context) }
+        onOpenLinkSettings = { openAppSupportedLinksSettings(context) },
     )
 }
 
@@ -49,7 +49,7 @@ fun HomeScreenContent(
     onToggleAutoRedirect: (Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
     onCopyUrl: (label: String, url: String) -> Unit,
-    onOpenLinkSettings: () -> Unit
+    onOpenLinkSettings: () -> Unit,
 ) {
     PremiumHomeScreenContent(
         uiState = uiState,
@@ -62,7 +62,7 @@ fun HomeScreenContent(
         onToggleAutoRedirect = onToggleAutoRedirect,
         onOpenUrl = onOpenUrl,
         onCopyUrl = onCopyUrl,
-        onOpenLinkSettings = onOpenLinkSettings
+        onOpenLinkSettings = onOpenLinkSettings,
     )
 }
 
@@ -71,13 +71,13 @@ private fun openAppSupportedLinksSettings(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val intent = Intent(
                 Settings.ACTION_APP_OPEN_BY_DEFAULT_SETTINGS,
-                Uri.parse("package:${context.packageName}")
+                "package:${context.packageName}".toUri(),
             )
             context.startActivity(intent)
         } else {
             val intent = Intent(
                 Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.parse("package:${context.packageName}")
+                "package:${context.packageName}".toUri(),
             )
             context.startActivity(intent)
         }
@@ -85,7 +85,7 @@ private fun openAppSupportedLinksSettings(context: Context) {
         try {
             val intent = Intent(
                 Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                Uri.parse("package:${context.packageName}")
+                "package:${context.packageName}".toUri()
             )
             context.startActivity(intent)
         } catch (_: Exception) {
@@ -95,18 +95,18 @@ private fun openAppSupportedLinksSettings(context: Context) {
 
 private fun openUrlInBrowserOrMaps(context: Context, url: String) {
     try {
-        val uri = Uri.parse(url)
+        val uri = url.toUri()
         val intent = Intent(Intent.ACTION_VIEW, uri)
         val pm = context.packageManager
 
         if (url.contains("waze", ignoreCase = true)) {
-            val wazeTestIntent = Intent(Intent.ACTION_VIEW, Uri.parse("waze://"))
+            val wazeTestIntent = Intent(Intent.ACTION_VIEW, "waze://".toUri())
             val resolveInfo = pm.resolveActivity(wazeTestIntent, PackageManager.MATCH_DEFAULT_ONLY)
             if (resolveInfo != null) {
                 intent.setPackage("com.waze")
             }
         } else if (url.contains("google", ignoreCase = true)) {
-            val gmapsTestIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps"))
+            val gmapsTestIntent = Intent(Intent.ACTION_VIEW, "https://www.google.com/maps".toUri())
             gmapsTestIntent.setPackage("com.google.android.apps.maps")
             val resolveInfo = pm.resolveActivity(gmapsTestIntent, PackageManager.MATCH_DEFAULT_ONLY)
             if (resolveInfo != null) {
@@ -117,7 +117,7 @@ private fun openUrlInBrowserOrMaps(context: Context, url: String) {
         context.startActivity(intent)
     } catch (_: Exception) {
         try {
-            val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            val fallbackIntent = Intent(Intent.ACTION_VIEW, url.toUri())
             context.startActivity(fallbackIntent)
         } catch (_: Exception) {
         }
