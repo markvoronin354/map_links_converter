@@ -25,7 +25,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
@@ -520,38 +519,6 @@ private fun PremiumConversionResultCard(
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Copy")
-                            }
-                        }
-
-                        // Alt App Options
-                        val altApps = MapTargetApp.entries.filter {
-                            it != result.targetApp
-                        }
-                        for (altTarget in altApps) {
-                            val altUrl = when (altTarget) {
-                                MapTargetApp.GOOGLE_MAPS -> result.googleMapsUrl
-                                MapTargetApp.WAZE -> result.wazeUrl
-                                MapTargetApp.APPLE_MAPS -> result.appleMapsUrl
-                            }
-                            val altName = when (altTarget) {
-                                MapTargetApp.GOOGLE_MAPS -> "Google Maps"
-                                MapTargetApp.WAZE -> "Waze"
-                                MapTargetApp.APPLE_MAPS -> "Apple Maps"
-                            }
-                            if (!altUrl.isNullOrBlank()) {
-                                OutlinedButton(
-                                    onClick = { onOpenUrl(altUrl) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Or open in $altName", fontSize = 13.sp)
-                                }
                             }
                         }
                     }
