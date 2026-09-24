@@ -26,9 +26,7 @@ val sampleUiStateWithResult = MainUiState(
         appleMapsUrl = "https://maps.apple.com/?q=Golden+Gate+Bridge&ll=37.8199,-122.4783",
     ),
     autoRedirectEnabled = true,
-    appleMapsTarget = MapTargetApp.GOOGLE_MAPS,
-    googleMapsTarget = MapTargetApp.WAZE,
-    wazeTarget = MapTargetApp.GOOGLE_MAPS,
+    targetApp = MapTargetApp.GOOGLE_MAPS,
 )
 
 @Preview(showBackground = true, name = "Current Design Preview")

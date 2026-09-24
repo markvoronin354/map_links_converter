@@ -107,9 +107,10 @@ fun PremiumHomeScreenContent(
     onInputUrlChanged: (String) -> Unit,
     onClearInput: () -> Unit,
     onResultTargetChanged: (MapTargetApp) -> Unit = {},
-    onAppleMapsTargetChanged: (MapTargetApp) -> Unit,
-    onGoogleMapsTargetChanged: (MapTargetApp) -> Unit,
-    onWazeTargetChanged: (MapTargetApp) -> Unit,
+    onTargetAppChanged: (MapTargetApp) -> Unit = {},
+    onAppleMapsTargetChanged: (MapTargetApp) -> Unit = { onTargetAppChanged(it) },
+    onGoogleMapsTargetChanged: (MapTargetApp) -> Unit = { onTargetAppChanged(it) },
+    onWazeTargetChanged: (MapTargetApp) -> Unit = { onTargetAppChanged(it) },
     onToggleAutoRedirect: (Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
     onCopyUrl: (label: String, url: String) -> Unit,
@@ -199,12 +200,8 @@ fun PremiumHomeScreenContent(
             }
 
             PremiumTargetSelectionCard(
-                appleMapsTarget = uiState.appleMapsTarget,
-                googleMapsTarget = uiState.googleMapsTarget,
-                wazeTarget = uiState.wazeTarget,
-                onAppleMapsTargetChanged = onAppleMapsTargetChanged,
-                onGoogleMapsTargetChanged = onGoogleMapsTargetChanged,
-                onWazeTargetChanged = onWazeTargetChanged
+                selectedTarget = uiState.targetApp,
+                onTargetSelected = onTargetAppChanged
             )
 
             PremiumAutoRedirectCard(
@@ -402,7 +399,6 @@ private fun PremiumConversionResultCard(
 
                     TargetDropdownPill(
                         currentTarget = result.targetApp,
-                        sourceApp = result.linkSource,
                         onTargetSelected = onResultTargetChanged
                     )
                 }
@@ -529,7 +525,7 @@ private fun PremiumConversionResultCard(
 
                         // Alt App Options
                         val altApps = MapTargetApp.entries.filter {
-                            it != result.targetApp && it.toLinkSource() != result.linkSource
+                            it != result.targetApp
                         }
                         for (altTarget in altApps) {
                             val altUrl = when (altTarget) {
@@ -585,13 +581,12 @@ private fun PremiumConversionResultCard(
 @Composable
 private fun TargetDropdownPill(
     currentTarget: MapTargetApp,
-    sourceApp: MapLinkSource,
     onTargetSelected: (MapTargetApp) -> Unit
 ) {
     var expanded by remember { mutableStateOf(value = false) }
 
-    val availableTargets = remember(sourceApp) {
-        MapTargetApp.entries.filter { it.toLinkSource() != sourceApp }
+    val availableTargets = remember {
+        MapTargetApp.entries
     }
 
     val (name, bgColor, textColor) = when (currentTarget) {
@@ -747,12 +742,8 @@ private fun MetadataRow(label: String, value: String) {
 
 @Composable
 private fun PremiumTargetSelectionCard(
-    appleMapsTarget: MapTargetApp,
-    googleMapsTarget: MapTargetApp,
-    wazeTarget: MapTargetApp,
-    onAppleMapsTargetChanged: (MapTargetApp) -> Unit,
-    onGoogleMapsTargetChanged: (MapTargetApp) -> Unit,
-    onWazeTargetChanged: (MapTargetApp) -> Unit
+    selectedTarget: MapTargetApp,
+    onTargetSelected: (MapTargetApp) -> Unit
 ) {
     Surface(
         modifier = Modifier
@@ -790,24 +781,10 @@ private fun PremiumTargetSelectionCard(
             }
 
             TargetSegmentRow(
-                sourceLabel = "Apple Maps links",
-                selectedTarget = appleMapsTarget,
-                sourceApp = MapLinkSource.APPLE_MAPS,
-                onTargetSelected = onAppleMapsTargetChanged
-            )
-
-            TargetSegmentRow(
-                sourceLabel = "Google Maps links",
-                selectedTarget = googleMapsTarget,
-                sourceApp = MapLinkSource.GOOGLE_MAPS,
-                onTargetSelected = onGoogleMapsTargetChanged
-            )
-
-            TargetSegmentRow(
-                sourceLabel = "Waze links",
-                selectedTarget = wazeTarget,
-                sourceApp = MapLinkSource.WAZE,
-                onTargetSelected = onWazeTargetChanged
+                sourceLabel = "Open all links in",
+                selectedTarget = selectedTarget,
+                availableTargets = listOf(MapTargetApp.GOOGLE_MAPS, MapTargetApp.WAZE, MapTargetApp.APPLE_MAPS),
+                onTargetSelected = onTargetSelected
             )
         }
     }
@@ -817,13 +794,9 @@ private fun PremiumTargetSelectionCard(
 private fun TargetSegmentRow(
     sourceLabel: String,
     selectedTarget: MapTargetApp,
-    sourceApp: MapLinkSource,
+    availableTargets: List<MapTargetApp> = listOf(MapTargetApp.GOOGLE_MAPS, MapTargetApp.WAZE, MapTargetApp.APPLE_MAPS),
     onTargetSelected: (MapTargetApp) -> Unit
 ) {
-    val availableTargets = remember(sourceApp) {
-        MapTargetApp.entries.filter { it.toLinkSource() != sourceApp }
-    }
-
     val selectedIndex = availableTargets.indexOf(selectedTarget).coerceAtLeast(0)
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

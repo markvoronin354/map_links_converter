@@ -17,7 +17,8 @@ object AppleMapsConverter {
     )
 
     private val PATH_COORDS_REGEX = Pattern.compile(
-        "[/@=](-?\\d{1,3}\\.\\d+)\\s*[,%2C]\\s*(-?\\d{1,3}\\.\\d+)",
+        """(?:[/@=]|ll\.|lat=|=|to=)(-?\d{1,3}\.\d+)\s*[,%2C\s&]+(?:lon=|lng=)?(-?\d{1,3}\.\d+)""",
+        Pattern.CASE_INSENSITIVE
     )
 
     private val APPLE_PLACE_NAME_REGEX = Pattern.compile(
@@ -97,16 +98,6 @@ object AppleMapsConverter {
             else -> MapLinkSource.UNKNOWN
         }
 
-        var effectiveTargetApp = targetApp
-        if (effectiveTargetApp.toLinkSource() == linkSource) {
-            effectiveTargetApp = when (linkSource) {
-                MapLinkSource.GOOGLE_MAPS -> MapTargetApp.WAZE
-                MapLinkSource.WAZE -> MapTargetApp.GOOGLE_MAPS
-                MapLinkSource.APPLE_MAPS -> MapTargetApp.GOOGLE_MAPS
-                MapLinkSource.UNKNOWN -> MapTargetApp.GOOGLE_MAPS
-            }
-        }
-
         val queryParams = parseQueryParams(extractedUrl)
 
         var qParam = queryParams["q"]
@@ -125,6 +116,14 @@ object AppleMapsConverter {
         var toParam = queryParams["to"] ?: queryParams["destination"] ?: queryParams["daddr"]
         var fromParam = queryParams["from"] ?: queryParams["from_ll"] ?: queryParams["origin"] ?: queryParams["saddr"]
         val dirflgParam = queryParams["dirflg"] ?: queryParams["travelmode"]
+
+        if (llParam.isNullOrBlank()) {
+            val lat = queryParams["lat"]
+            val lon = queryParams["lon"] ?: queryParams["lng"]
+            if (!lat.isNullOrBlank() && !lon.isNullOrBlank()) {
+                llParam = "$lat,$lon"
+            }
+        }
 
         if (llParam.isNullOrBlank()) {
             val pathCoordsMatcher = PATH_COORDS_REGEX.matcher(extractedUrl)
@@ -216,10 +215,12 @@ object AppleMapsConverter {
             // Apple Maps URL
             val appleMapsUrlBuilder = StringBuilder("https://maps.apple.com/?daddr=")
             if (destination.isNotBlank()) {
-                appleMapsUrlBuilder.append(encode(destination))
+                val formattedDest = if (isCoordinatesFormat(destination)) destination else encode(destination)
+                appleMapsUrlBuilder.append(formattedDest)
             }
             if (origin.isNotBlank()) {
-                appleMapsUrlBuilder.append("&saddr=").append(encode(origin))
+                val formattedOrigin = if (isCoordinatesFormat(origin)) origin else encode(origin)
+                appleMapsUrlBuilder.append("&saddr=").append(formattedOrigin)
             }
             if (!travelMode.isNullOrBlank()) {
                 val dirFlg = when (travelMode.lowercase()) {
@@ -237,7 +238,7 @@ object AppleMapsConverter {
 
             val geoUri = if (destination.isNotBlank()) "geo:0,0?q=${encode(destination)}" else "geo:0,0"
 
-            val convertedUrl = when (effectiveTargetApp) {
+            val convertedUrl = when (targetApp) {
                 MapTargetApp.WAZE -> wazeUrl
                 MapTargetApp.APPLE_MAPS -> appleMapsUrl
                 MapTargetApp.GOOGLE_MAPS -> gMapsUrl
@@ -246,7 +247,7 @@ object AppleMapsConverter {
             return ConversionResult(
                 originalInput = input,
                 extractedLinkUrl = extractedUrl,
-                targetApp = effectiveTargetApp,
+                targetApp = targetApp,
                 convertedUrl = convertedUrl,
                 googleMapsUrl = gMapsUrl,
                 wazeUrl = wazeUrl,
@@ -292,20 +293,32 @@ object AppleMapsConverter {
                 gMapsUrl = "https://www.google.com/maps/search/?api=1&query=${encode(coordinates)}"
             }
             else -> {
-                return ConversionResult(
-                    originalInput = input,
-                    extractedLinkUrl = extractedUrl,
-                    targetApp = effectiveTargetApp,
-                    linkSource = linkSource,
-                    linkType = MapLinkType.UNKNOWN,
-                    isSuccess = false,
-                    errorMessage = "Link '$extractedUrl' is a general map homepage link and does not contain a specific place or location to convert."
-                )
+                // If query, address, and coordinates are null but we have an Apple/Google/Waze link (e.g. short place or route ID link), use the extracted URL as search query
+                val isHomepage = extractedUrl.equals("https://maps.apple.com", ignoreCase = true) ||
+                        extractedUrl.equals("https://maps.apple.com/", ignoreCase = true) ||
+                        extractedUrl.equals("https://www.google.com/maps", ignoreCase = true) ||
+                        extractedUrl.equals("https://www.google.com/maps/", ignoreCase = true) ||
+                        extractedUrl.equals("https://waze.com/ul", ignoreCase = true)
+
+                if (isHomepage) {
+                    return ConversionResult(
+                        originalInput = input,
+                        extractedLinkUrl = extractedUrl,
+                        targetApp = targetApp,
+                        linkSource = linkSource,
+                        linkType = MapLinkType.UNKNOWN,
+                        isSuccess = false,
+                        errorMessage = "Link '$extractedUrl' is a general map homepage link and does not contain a specific place or location to convert."
+                    )
+                }
+
+                linkType = MapLinkType.SEARCH
+                gMapsUrl = "https://www.google.com/maps/search/?api=1&query=${encode(extractedUrl)}"
             }
         }
 
         val wazeUrl = buildWazeUrl(
-            query = query,
+            query = query ?: extractedUrl,
             coordinates = coordinates,
             address = address,
             destination = null
@@ -314,22 +327,34 @@ object AppleMapsConverter {
         val appleMapsUrl = when {
             !query.isNullOrBlank() -> {
                 if (!coordinates.isNullOrBlank() && !isCoordinatesFormat(query)) {
-                    "https://maps.apple.com/?q=${encode(query)}&ll=${encode(coordinates)}"
+                    "https://maps.apple.com/?q=${encode(query)}&ll=$coordinates"
                 } else {
                     "https://maps.apple.com/?q=${encode(query)}"
                 }
             }
             !address.isNullOrBlank() -> {
                 if (!coordinates.isNullOrBlank()) {
-                    "https://maps.apple.com/?q=${encode(address)}&ll=${encode(coordinates)}"
+                    "https://maps.apple.com/?q=${encode(address)}&ll=$coordinates"
                 } else {
                     "https://maps.apple.com/?q=${encode(address)}"
                 }
             }
             !coordinates.isNullOrBlank() -> {
-                "https://maps.apple.com/?q=${encode(coordinates)}&ll=${encode(coordinates)}"
+                "https://maps.apple.com/?q=$coordinates&ll=$coordinates"
             }
-            else -> "https://maps.apple.com/"
+            else -> {
+                val isHomepage = extractedUrl.equals("https://maps.apple.com", ignoreCase = true) ||
+                        extractedUrl.equals("https://maps.apple.com/", ignoreCase = true) ||
+                        extractedUrl.equals("https://www.google.com/maps", ignoreCase = true) ||
+                        extractedUrl.equals("https://www.google.com/maps/", ignoreCase = true) ||
+                        extractedUrl.equals("https://waze.com/ul", ignoreCase = true)
+
+                if (isHomepage) {
+                    "https://maps.apple.com"
+                } else {
+                    "https://maps.apple.com/?q=${encode(extractedUrl)}"
+                }
+            }
         }
 
         val geoUri = when {
@@ -340,7 +365,7 @@ object AppleMapsConverter {
             else -> "geo:0,0?q=${encode(extractedUrl)}"
         }
 
-        val convertedUrl = when (effectiveTargetApp) {
+        val convertedUrl = when (targetApp) {
             MapTargetApp.WAZE -> wazeUrl
             MapTargetApp.APPLE_MAPS -> appleMapsUrl
             MapTargetApp.GOOGLE_MAPS -> gMapsUrl
@@ -349,7 +374,7 @@ object AppleMapsConverter {
         return ConversionResult(
             originalInput = input,
             extractedLinkUrl = extractedUrl,
-            targetApp = effectiveTargetApp,
+            targetApp = targetApp,
             convertedUrl = convertedUrl,
             googleMapsUrl = gMapsUrl,
             wazeUrl = wazeUrl,
@@ -427,12 +452,22 @@ object AppleMapsConverter {
             for (pair in pairs) {
                 val idx = pair.indexOf('=')
                 if (idx > 0) {
-                    val key = decode(pair.substring(0, idx)).lowercase()
-                    val value = decode(pair.substring(idx + 1))
-                    params[key] = value
+                    var rawKey = decode(pair.substring(0, idx)).lowercase().trim()
+                    if (rawKey.contains('?')) {
+                        rawKey = rawKey.substringAfterLast('?')
+                    }
+                    val value = decode(pair.substring(idx + 1)).trim()
+                    if (rawKey.isNotEmpty()) {
+                        params[rawKey] = value
+                    }
                 } else if (pair.isNotEmpty()) {
-                    val key = decode(pair).lowercase()
-                    params[key] = ""
+                    var rawKey = decode(pair).lowercase().trim()
+                    if (rawKey.contains('?')) {
+                        rawKey = rawKey.substringAfterLast('?')
+                    }
+                    if (rawKey.isNotEmpty()) {
+                        params[rawKey] = ""
+                    }
                 }
             }
         }
@@ -454,7 +489,7 @@ object AppleMapsConverter {
     private fun cleanCoordinates(input: String?): String? {
         if (input.isNullOrBlank()) return null
         var decoded = decode(input.trim())
-        decoded = decoded.replace(Regex("(?i)^(?:ll[.=:]|loc:|geo:|point:|latlng[=:]|@)"), "").trim()
+        decoded = decoded.replace(Regex("(?i)^(?:ll[.=:]|loc:|geo:|point:|latlng[=:]|to[.=:]|lat[=:]|@)"), "").trim()
         val matcher = LAT_LNG_REGEX.matcher(decoded)
         return if (matcher.matches()) {
             "${matcher.group(1)},${matcher.group(2)}"

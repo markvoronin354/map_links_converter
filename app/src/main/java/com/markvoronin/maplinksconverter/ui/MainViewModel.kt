@@ -11,7 +11,6 @@ import com.markvoronin.maplinksconverter.data.ConversionResult
 import com.markvoronin.maplinksconverter.data.MapLinkSource
 import com.markvoronin.maplinksconverter.data.MapTargetApp
 import com.markvoronin.maplinksconverter.data.UrlExpander
-import com.markvoronin.maplinksconverter.data.toLinkSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,12 +21,14 @@ data class MainUiState(
     val inputUrl: String = "",
     val conversionResult: ConversionResult? = null,
     val autoRedirectEnabled: Boolean = true,
-    val appleMapsTarget: MapTargetApp = MapTargetApp.GOOGLE_MAPS,
-    val googleMapsTarget: MapTargetApp = MapTargetApp.WAZE,
-    val wazeTarget: MapTargetApp = MapTargetApp.GOOGLE_MAPS,
+    val targetApp: MapTargetApp = MapTargetApp.GOOGLE_MAPS,
     val isLoading: Boolean = false,
     val userNotice: String? = null,
-)
+) {
+    val appleMapsTarget: MapTargetApp get() = targetApp
+    val googleMapsTarget: MapTargetApp get() = targetApp
+    val wazeTarget: MapTargetApp get() = targetApp
+}
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -39,9 +40,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(
         MainUiState(
             autoRedirectEnabled = prefs.getBoolean(KEY_AUTO_REDIRECT, true),
-            appleMapsTarget = validateTarget(loadTargetPref(KEY_TARGET_APPLE_MAPS, MapTargetApp.GOOGLE_MAPS), MapLinkSource.APPLE_MAPS),
-            googleMapsTarget = validateTarget(loadTargetPref(KEY_TARGET_GOOGLE_MAPS, MapTargetApp.WAZE), MapLinkSource.GOOGLE_MAPS),
-            wazeTarget = validateTarget(loadTargetPref(KEY_TARGET_WAZE, MapTargetApp.GOOGLE_MAPS), MapLinkSource.WAZE)
+            targetApp = loadSavedTargetApp()
         )
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
@@ -104,61 +103,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getTargetAppForInput(input: String): MapTargetApp {
-        val extractedUrl = AppleMapsConverter.extractAppleMapsUrl(input) ?: input
-        return when {
-            extractedUrl.contains("apple", ignoreCase = true) -> validateTarget(_uiState.value.appleMapsTarget, MapLinkSource.APPLE_MAPS)
-            extractedUrl.contains("google", ignoreCase = true) || extractedUrl.contains("goo.gl", ignoreCase = true) -> validateTarget(_uiState.value.googleMapsTarget, MapLinkSource.GOOGLE_MAPS)
-            extractedUrl.contains("waze", ignoreCase = true) -> validateTarget(_uiState.value.wazeTarget, MapLinkSource.WAZE)
-            else -> MapTargetApp.GOOGLE_MAPS
-        }
+        return _uiState.value.targetApp
     }
 
     fun getTargetAppForSource(source: MapLinkSource): MapTargetApp {
-        return when (source) {
-            MapLinkSource.APPLE_MAPS -> validateTarget(_uiState.value.appleMapsTarget, MapLinkSource.APPLE_MAPS)
-            MapLinkSource.GOOGLE_MAPS -> validateTarget(_uiState.value.googleMapsTarget, MapLinkSource.GOOGLE_MAPS)
-            MapLinkSource.WAZE -> validateTarget(_uiState.value.wazeTarget, MapLinkSource.WAZE)
-            MapLinkSource.UNKNOWN -> MapTargetApp.GOOGLE_MAPS
-        }
+        return _uiState.value.targetApp
     }
 
-    private fun validateTarget(target: MapTargetApp, source: MapLinkSource): MapTargetApp {
-        if (target.toLinkSource() == source) {
-            return when (source) {
-                MapLinkSource.APPLE_MAPS -> MapTargetApp.GOOGLE_MAPS
-                MapLinkSource.GOOGLE_MAPS -> MapTargetApp.WAZE
-                MapLinkSource.WAZE -> MapTargetApp.GOOGLE_MAPS
-                MapLinkSource.UNKNOWN -> MapTargetApp.GOOGLE_MAPS
-            }
-        }
-        return target
-    }
-
-    fun setAppleMapsTarget(target: MapTargetApp) {
-        val validTarget = validateTarget(target, MapLinkSource.APPLE_MAPS)
-        prefs.edit { putString(KEY_TARGET_APPLE_MAPS, validTarget.name) }
-        _uiState.update { it.copy(appleMapsTarget = validTarget) }
+    fun setTargetApp(target: MapTargetApp) {
+        prefs.edit { putString(KEY_TARGET_APP, target.name) }
+        _uiState.update { it.copy(targetApp = target) }
         reconvertCurrentInput()
     }
 
-    fun setGoogleMapsTarget(target: MapTargetApp) {
-        val validTarget = validateTarget(target, MapLinkSource.GOOGLE_MAPS)
-        prefs.edit { putString(KEY_TARGET_GOOGLE_MAPS, validTarget.name) }
-        _uiState.update { it.copy(googleMapsTarget = validTarget) }
-        reconvertCurrentInput()
-    }
-
-    fun setWazeTarget(target: MapTargetApp) {
-        val validTarget = validateTarget(target, MapLinkSource.WAZE)
-        prefs.edit { putString(KEY_TARGET_WAZE, validTarget.name) }
-        _uiState.update { it.copy(wazeTarget = validTarget) }
-        reconvertCurrentInput()
-    }
+    fun setAppleMapsTarget(target: MapTargetApp) = setTargetApp(target)
+    fun setGoogleMapsTarget(target: MapTargetApp) = setTargetApp(target)
+    fun setWazeTarget(target: MapTargetApp) = setTargetApp(target)
 
     fun onTargetAppForCurrentResultChanged(target: MapTargetApp) {
         val currentResult = _uiState.value.conversionResult ?: return
-        val validTarget = validateTarget(target, currentResult.linkSource)
-        val updatedConvertedUrl = when (validTarget) {
+        val updatedConvertedUrl = when (target) {
             MapTargetApp.GOOGLE_MAPS -> currentResult.googleMapsUrl
             MapTargetApp.WAZE -> currentResult.wazeUrl
             MapTargetApp.APPLE_MAPS -> currentResult.appleMapsUrl
@@ -166,7 +130,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update {
             it.copy(
                 conversionResult = currentResult.copy(
-                    targetApp = validTarget,
+                    targetApp = target,
                     convertedUrl = updatedConvertedUrl
                 )
             )
@@ -203,18 +167,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return prefs.getBoolean(KEY_AUTO_REDIRECT, true)
     }
 
-    private fun loadTargetPref(key: String, default: MapTargetApp): MapTargetApp {
-        val name = prefs.getString(key, null) ?: return default
+    private fun loadSavedTargetApp(): MapTargetApp {
+        val name = prefs.getString(KEY_TARGET_APP, null)
+            ?: prefs.getString(KEY_TARGET_APPLE_MAPS, null)
+            ?: prefs.getString(KEY_TARGET_GOOGLE_MAPS, null)
+            ?: prefs.getString(KEY_TARGET_WAZE, null)
+            ?: return MapTargetApp.GOOGLE_MAPS
+
         return try {
             MapTargetApp.valueOf(name)
         } catch (_: Exception) {
-            default
+            MapTargetApp.GOOGLE_MAPS
         }
     }
 
     companion object {
         private const val PREFS_NAME = "map_links_converter_prefs"
         private const val KEY_AUTO_REDIRECT = "auto_redirect_enabled"
+        private const val KEY_TARGET_APP = "target_app"
         private const val KEY_TARGET_APPLE_MAPS = "target_apple_maps"
         private const val KEY_TARGET_GOOGLE_MAPS = "target_google_maps"
         private const val KEY_TARGET_WAZE = "target_waze"

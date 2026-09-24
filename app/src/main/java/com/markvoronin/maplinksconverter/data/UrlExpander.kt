@@ -9,21 +9,6 @@ import java.util.regex.Pattern
 
 object UrlExpander {
 
-    private val OG_URL_REGEX = Pattern.compile(
-        """<meta\s+[^>]*property=["']og:url["']\s+content=["']([^"']+)["']""",
-        Pattern.CASE_INSENSITIVE,
-    )
-
-    private val CANONICAL_URL_REGEX = Pattern.compile(
-        """<link\s+[^>]*rel=["']canonical["']\s+href=["']([^"']+)["']""",
-        Pattern.CASE_INSENSITIVE,
-    )
-
-    private val OG_TITLE_REGEX = Pattern.compile(
-        """<meta\s+[^>]*property=["'](?:og:title|twitter:title)["']\s+content=["']([^"']+)["']""",
-        Pattern.CASE_INSENSITIVE,
-    )
-
     private val TITLE_TAG_REGEX = Pattern.compile(
         """<title[^>]*>([^<]+)</title>""",
         Pattern.CASE_INSENSITIVE
@@ -31,6 +16,11 @@ object UrlExpander {
 
     private val HTML_COORDS_REGEX = Pattern.compile(
         """(?:geo\.position|icbm|center|ll|coordinate|latlng)["']?\s*(?:content|value)?=["']?(-?\d{1,3}\.\d+)\s*[,%2C;]\s*(-?\d{1,3}\.\d+)""",
+        Pattern.CASE_INSENSITIVE
+    )
+
+    private val GENERAL_COORDS_REGEX = Pattern.compile(
+        """(?:ll\.|ll=|lat=|center=|to=ll\.|/|@|c=)(-?\d{1,3}\.\d+)\s*[,%2C]\s*(-?\d{1,3}\.\d+)""",
         Pattern.CASE_INSENSITIVE
     )
 
@@ -53,9 +43,12 @@ object UrlExpander {
                 val connection = (urlObj.openConnection() as HttpURLConnection)
                 connection.instanceFollowRedirects = true
                 connection.requestMethod = "GET"
-                connection.connectTimeout = 2000
-                connection.readTimeout = 2000
-                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1")
+                connection.connectTimeout = 3000
+                connection.readTimeout = 3000
+                connection.setRequestProperty(
+                    "User-Agent",
+                    "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1"
+                )
 
                 val responseCode = connection.responseCode
                 val finalUrl = connection.url.toString()
@@ -87,7 +80,7 @@ object UrlExpander {
                         val sb = StringBuilder()
                         var line: String? = reader.readLine()
                         var linesRead = 0
-                        while (line != null && linesRead < 100) {
+                        while (line != null && linesRead < 150) {
                             sb.append(line).append("\n")
                             if (line.contains("</head>", ignoreCase = true)) break
                             line = reader.readLine()
@@ -96,40 +89,53 @@ object UrlExpander {
                         val html = sb.toString()
                         connection.disconnect()
 
-                        val ogUrlMatcher = OG_URL_REGEX.matcher(html)
-                        if (ogUrlMatcher.find()) {
-                            val foundUrl = ogUrlMatcher.group(1)
-                            if (!foundUrl.isNullOrBlank() && foundUrl != currentUrl) {
-                                return@withContext foundUrl
-                            }
+                        val ogUrl = extractMetaContent(html, "og:url")
+                        if (!ogUrl.isNullOrBlank() && ogUrl != currentUrl) {
+                            return@withContext ogUrl
                         }
 
-                        val canonicalMatcher = CANONICAL_URL_REGEX.matcher(html)
-                        if (canonicalMatcher.find()) {
-                            val foundUrl = canonicalMatcher.group(1)
-                            if (!foundUrl.isNullOrBlank() && foundUrl != currentUrl) {
-                                return@withContext foundUrl
-                            }
+                        val canonicalUrl = extractCanonicalUrl(html)
+                        if (!canonicalUrl.isNullOrBlank() && canonicalUrl != currentUrl) {
+                            return@withContext canonicalUrl
                         }
 
-                        val titleMatcher = OG_TITLE_REGEX.matcher(html)
-                        val title = if (titleMatcher.find()) {
-                            titleMatcher.group(1)
-                        } else {
-                            val htmlTitleMatcher = TITLE_TAG_REGEX.matcher(html)
-                            if (htmlTitleMatcher.find()) htmlTitleMatcher.group(1) else null
-                        }
+                        val title = extractMetaContent(html, "og:title")
+                            ?: extractMetaContent(html, "twitter:title")
+                            ?: run {
+                                val htmlTitleMatcher = TITLE_TAG_REGEX.matcher(html)
+                                if (htmlTitleMatcher.find()) htmlTitleMatcher.group(1) else null
+                            }
+
+                        val description = extractMetaContent(html, "og:description")
+                            ?: extractMetaContent(html, "twitter:description")
+
+                        val ogImage = extractMetaContent(html, "og:image") ?: extractMetaContent(html, "twitter:image")
+                        val ogImageCoords = if (!ogImage.isNullOrBlank()) {
+                            val genM = GENERAL_COORDS_REGEX.matcher(ogImage)
+                            if (genM.find()) "${genM.group(1)},${genM.group(2)}" else null
+                        } else null
 
                         val coordsMatcher = HTML_COORDS_REGEX.matcher(html)
-                        val coords = if (coordsMatcher.find()) "${coordsMatcher.group(1)},${coordsMatcher.group(2)}" else null
-                        val cleanedTitle = cleanTitle(title)
+                        val coords = if (coordsMatcher.find()) {
+                            "${coordsMatcher.group(1)},${coordsMatcher.group(2)}"
+                        } else {
+                            ogImageCoords ?: run {
+                                val genM = GENERAL_COORDS_REGEX.matcher(html)
+                                if (genM.find()) "${genM.group(1)},${genM.group(2)}" else null
+                            }
+                        }
 
-                        if (!coords.isNullOrBlank() && !cleanedTitle.isNullOrBlank()) {
-                            return@withContext "https://maps.apple.com/?q=${URLEncoder.encode(cleanedTitle, "UTF-8")}&ll=$coords"
+                        val cleanedTitle = cleanTitle(title)
+                        val cleanedDesc = cleanTitle(description)
+
+                        val searchTarget = cleanedTitle ?: cleanedDesc
+
+                        if (!coords.isNullOrBlank() && !searchTarget.isNullOrBlank()) {
+                            return@withContext "https://maps.apple.com/?q=${URLEncoder.encode(searchTarget, "UTF-8")}&ll=$coords"
                         } else if (!coords.isNullOrBlank()) {
                             return@withContext "https://maps.apple.com/?ll=$coords"
-                        } else if (!cleanedTitle.isNullOrBlank()) {
-                            return@withContext "https://maps.apple.com/?q=${URLEncoder.encode(cleanedTitle, "UTF-8")}"
+                        } else if (!searchTarget.isNullOrBlank()) {
+                            return@withContext "https://maps.apple.com/?q=${URLEncoder.encode(searchTarget, "UTF-8")}"
                         }
                     } catch (_: Exception) {
                         connection.disconnect()
@@ -143,6 +149,31 @@ object UrlExpander {
         } catch (_: Exception) {
             trimmed
         }
+    }
+
+    private fun extractMetaContent(html: String, propertyOrName: String): String? {
+        val quoted = Pattern.quote(propertyOrName)
+        val pattern1 = Pattern.compile("""<meta\s+[^>]*(?:property|name)=["']$quoted["']\s+content=["']([^"']+)["']""", Pattern.CASE_INSENSITIVE)
+        val m1 = pattern1.matcher(html)
+        if (m1.find()) return m1.group(1)?.replace("&amp;", "&")
+
+        val pattern2 = Pattern.compile("""<meta\s+[^>]*content=["']([^"']+)["']\s+(?:property|name)=["']$quoted["']""", Pattern.CASE_INSENSITIVE)
+        val m2 = pattern2.matcher(html)
+        if (m2.find()) return m2.group(1)?.replace("&amp;", "&")
+
+        return null
+    }
+
+    private fun extractCanonicalUrl(html: String): String? {
+        val pattern1 = Pattern.compile("""<link\s+[^>]*rel=["']canonical["']\s+href=["']([^"']+)["']""", Pattern.CASE_INSENSITIVE)
+        val m1 = pattern1.matcher(html)
+        if (m1.find()) return m1.group(1)?.replace("&amp;", "&")
+
+        val pattern2 = Pattern.compile("""<link\s+[^>]*href=["']([^"']+)["']\s+rel=["']canonical["']""", Pattern.CASE_INSENSITIVE)
+        val m2 = pattern2.matcher(html)
+        if (m2.find()) return m2.group(1)?.replace("&amp;", "&")
+
+        return null
     }
 
     private fun cleanTitle(rawTitle: String?): String? {
@@ -168,6 +199,8 @@ object UrlExpander {
                 lower.contains("apple.co") ||
                 lower.contains("maps.apple.com/p/") ||
                 lower.contains("maps.apple/p/") ||
+                lower.contains("maps.apple.com/r/") ||
+                lower.contains("maps.apple/r/") ||
                 lower.contains("waze.com/ul/") ||
                 lower.contains("ul.waze.com") ||
                 lower.contains("waze.com/ul?h=") ||

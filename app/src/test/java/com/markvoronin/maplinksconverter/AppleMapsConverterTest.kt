@@ -90,41 +90,67 @@ class AppleMapsConverterTest {
         assertEquals(MapTargetApp.APPLE_MAPS, result.targetApp)
         assertEquals("48.8583701,2.2922926", result.coordinates)
         assertEquals("Eiffel Tower", result.query)
-        assertEquals("https://maps.apple.com/?q=Eiffel+Tower&ll=48.8583701%2C2.2922926", result.convertedUrl)
-        assertEquals("https://maps.apple.com/?q=Eiffel+Tower&ll=48.8583701%2C2.2922926", result.appleMapsUrl)
+        assertEquals("https://maps.apple.com/?q=Eiffel+Tower&ll=48.8583701,2.2922926", result.convertedUrl)
+        assertEquals("https://maps.apple.com/?q=Eiffel+Tower&ll=48.8583701,2.2922926", result.appleMapsUrl)
     }
 
     @Test
-    fun testConvert_googleMapsToGoogleMaps_fallsBackToWaze() {
+    fun testConvert_wazeToAppleMaps() {
+        val input = "https://waze.com/ul?ll=37.7749,-122.4194&q=San+Francisco&navigate=yes"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.APPLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals(MapLinkSource.WAZE, result.linkSource)
+        assertEquals(MapTargetApp.APPLE_MAPS, result.targetApp)
+        assertEquals("37.7749,-122.4194", result.coordinates)
+        assertEquals("https://maps.apple.com/?q=San+Francisco&ll=37.7749,-122.4194", result.convertedUrl)
+        assertEquals("https://maps.apple.com/?q=San+Francisco&ll=37.7749,-122.4194", result.appleMapsUrl)
+    }
+
+    @Test
+    fun testConvert_googleMapsDirectionsToAppleMaps() {
+        val input = "https://www.google.com/maps/dir/?api=1&origin=Cupertino&destination=San+Francisco&travelmode=driving"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.APPLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals(MapLinkSource.GOOGLE_MAPS, result.linkSource)
+        assertEquals(MapTargetApp.APPLE_MAPS, result.targetApp)
+        assertEquals(MapLinkType.DIRECTIONS, result.linkType)
+        assertEquals("https://maps.apple.com/?daddr=San+Francisco&saddr=Cupertino&dirflg=d", result.convertedUrl)
+        assertEquals("https://maps.apple.com/?daddr=San+Francisco&saddr=Cupertino&dirflg=d", result.appleMapsUrl)
+    }
+
+    @Test
+    fun testConvert_googleMapsToGoogleMaps_respectsTargetApp() {
         val input = "https://www.google.com/maps/search/?api=1&query=37.7749,-122.4194"
         val result = AppleMapsConverter.convert(input, MapTargetApp.GOOGLE_MAPS)
 
         assertTrue(result.isSuccess)
         assertEquals(MapLinkSource.GOOGLE_MAPS, result.linkSource)
-        assertEquals(MapTargetApp.WAZE, result.targetApp)
-        assertEquals("https://waze.com/ul?ll=37.7749%2C-122.4194&navigate=yes", result.convertedUrl)
+        assertEquals(MapTargetApp.GOOGLE_MAPS, result.targetApp)
+        assertEquals("https://www.google.com/maps/search/?api=1&query=37.7749%2C-122.4194", result.convertedUrl)
     }
 
     @Test
-    fun testConvert_appleMapsToAppleMaps_fallsBackToGoogle() {
+    fun testConvert_appleMapsToAppleMaps_respectsTargetApp() {
         val input = "https://maps.apple.com/?ll=37.7749,-122.4194"
         val result = AppleMapsConverter.convert(input, MapTargetApp.APPLE_MAPS)
 
         assertTrue(result.isSuccess)
         assertEquals(MapLinkSource.APPLE_MAPS, result.linkSource)
-        assertEquals(MapTargetApp.GOOGLE_MAPS, result.targetApp)
-        assertEquals("https://www.google.com/maps/search/?api=1&query=37.7749%2C-122.4194", result.convertedUrl)
+        assertEquals(MapTargetApp.APPLE_MAPS, result.targetApp)
+        assertEquals("https://maps.apple.com/?q=37.7749,-122.4194&ll=37.7749,-122.4194", result.convertedUrl)
     }
 
     @Test
-    fun testConvert_wazeToWaze_fallsBackToGoogle() {
+    fun testConvert_wazeToWaze_respectsTargetApp() {
         val input = "https://waze.com/ul?ll=37.7749,-122.4194&navigate=yes"
         val result = AppleMapsConverter.convert(input, MapTargetApp.WAZE)
 
         assertTrue(result.isSuccess)
         assertEquals(MapLinkSource.WAZE, result.linkSource)
-        assertEquals(MapTargetApp.GOOGLE_MAPS, result.targetApp)
-        assertEquals("https://www.google.com/maps/search/?api=1&query=37.7749%2C-122.4194", result.convertedUrl)
+        assertEquals(MapTargetApp.WAZE, result.targetApp)
+        assertEquals("https://waze.com/ul?ll=37.7749%2C-122.4194&navigate=yes", result.convertedUrl)
     }
 
     @Test
@@ -147,10 +173,62 @@ class AppleMapsConverterTest {
     }
 
     @Test
+    fun testConvert_wazeUrlLatLonToAppleMaps() {
+        val input = "https://waze.com/ul?lat=37.7749&lon=-122.4194&navigate=yes"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.APPLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals(MapLinkSource.WAZE, result.linkSource)
+        assertEquals("37.7749,-122.4194", result.coordinates)
+        assertEquals("https://maps.apple.com/?q=37.7749,-122.4194&ll=37.7749,-122.4194", result.appleMapsUrl)
+        assertEquals("https://maps.apple.com/?q=37.7749,-122.4194&ll=37.7749,-122.4194", result.convertedUrl)
+    }
+
+    @Test
+    fun testConvert_wazeShortUrlToAppleMaps_producesAppleMapsUrl() {
+        val input = "https://waze.com/ul/hdhv7gd6bb"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.APPLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals(MapLinkSource.WAZE, result.linkSource)
+        assertTrue(result.appleMapsUrl?.startsWith("https://maps.apple.com/") == true)
+        assertEquals("https://maps.apple.com/?q=https%3A%2F%2Fwaze.com%2Ful%2Fhdhv7gd6bb", result.convertedUrl)
+    }
+
+    @Test
     fun testExtractAppleMapsUrl_shortAppleMapsUrl() {
         val input = "https://maps.apple/p/EfDaGc5RHNY4Q0"
         val extracted = AppleMapsConverter.extractAppleMapsUrl(input)
         assertEquals("https://maps.apple/p/EfDaGc5RHNY4Q0", extracted)
+    }
+
+    @Test
+    fun testConvert_shortApplePlaceHash_requiresExpansion() {
+        val input = "https://maps.apple/p/EfDaGc5RHNY4Q0"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.GOOGLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals(MapLinkSource.APPLE_MAPS, result.linkSource)
+        assertFalse(result.hasLocationData())
+        assertTrue(UrlExpander.isShortenedUrl(input))
+    }
+
+    @Test
+    fun testIsShortenedUrl_appleRouteUrl() {
+        assertTrue(UrlExpander.isShortenedUrl("https://maps.apple/r/_6JUrN6eGI04Wb"))
+        assertTrue(UrlExpander.isShortenedUrl("https://maps.apple.com/r/_6JUrN6eGI04Wb"))
+        assertTrue(UrlExpander.isShortenedUrl("https://maps.apple.com/?auid=17384920183&lsp=9902"))
+    }
+
+    @Test
+    fun testConvert_appleMapsPlaceQuestionMarkAddress() {
+        val input = "https://maps.apple.com/?place?address=2000%20Panama%20Blvd,%20Englewood,%20FL%2034224"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.GOOGLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals(MapLinkSource.APPLE_MAPS, result.linkSource)
+        assertEquals("2000 Panama Blvd, Englewood, FL 34224", result.address)
+        assertTrue(result.googleMapsUrl?.contains("2000+Panama+Blvd") == true)
     }
 
     @Test

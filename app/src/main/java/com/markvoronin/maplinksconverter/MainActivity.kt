@@ -6,7 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import com.markvoronin.maplinksconverter.data.AppleMapsConverter
 import com.markvoronin.maplinksconverter.data.ConversionResult
@@ -15,6 +14,7 @@ import com.markvoronin.maplinksconverter.data.UrlExpander
 import com.markvoronin.maplinksconverter.ui.HomeScreen
 import com.markvoronin.maplinksconverter.ui.MainViewModel
 import com.markvoronin.maplinksconverter.ui.theme.MapLinksConverterTheme
+import com.markvoronin.maplinksconverter.util.IntentUtils
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -110,23 +110,10 @@ class MainActivity : ComponentActivity() {
             MapTargetApp.APPLE_MAPS -> null
         }
 
-        val redirectIntent = Intent(Intent.ACTION_VIEW, redirectUrl.toUri()).apply {
-            targetPackage?.let { setPackage(it) }
-        }
-
-        return try {
-            startActivity(redirectIntent)
+        val launched = IntentUtils.openExternalUrl(this, redirectUrl, targetPackage)
+        if (launched) {
             finish()
-            true
-        } catch (_: Exception) {
-            try {
-                val fallbackIntent = Intent(Intent.ACTION_VIEW, redirectUrl.toUri())
-                startActivity(fallbackIntent)
-                finish()
-                true
-            } catch (_: Exception) {
-                false
-            }
         }
+        return launched
     }
 }
