@@ -5,6 +5,7 @@ import com.markvoronin.maplinksconverter.data.MapLinkSource
 import com.markvoronin.maplinksconverter.data.MapLinkType
 import com.markvoronin.maplinksconverter.data.MapTargetApp
 import com.markvoronin.maplinksconverter.data.UrlExpander
+import com.markvoronin.maplinksconverter.data.getEffectiveTargetApp
 import com.markvoronin.maplinksconverter.data.toLinkSource
 import org.junit.Assert.*
 import org.junit.Test
@@ -266,5 +267,20 @@ class AppleMapsConverterTest {
 
         assertFalse(result.isSuccess)
         assertNotNull(result.errorMessage)
+    }
+
+    @Test
+    fun testGetEffectiveTargetApp() {
+        // Preferred is Google, input source is Google -> fallback to Waze
+        assertEquals(MapTargetApp.WAZE, MapTargetApp.GOOGLE_MAPS.getEffectiveTargetApp(MapLinkSource.GOOGLE_MAPS))
+
+        // Preferred is Google, input source is Apple -> keep Google
+        assertEquals(MapTargetApp.GOOGLE_MAPS, MapTargetApp.GOOGLE_MAPS.getEffectiveTargetApp(MapLinkSource.APPLE_MAPS))
+
+        // Preferred is Waze, input source is Waze -> fallback to Google
+        assertEquals(MapTargetApp.GOOGLE_MAPS, MapTargetApp.WAZE.getEffectiveTargetApp(MapLinkSource.WAZE))
+
+        // Preferred is Apple, input source is Apple -> fallback to Google
+        assertEquals(MapTargetApp.GOOGLE_MAPS, MapTargetApp.APPLE_MAPS.getEffectiveTargetApp(MapLinkSource.APPLE_MAPS))
     }
 }

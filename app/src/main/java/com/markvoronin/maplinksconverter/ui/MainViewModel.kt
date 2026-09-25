@@ -8,8 +8,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.markvoronin.maplinksconverter.data.AppleMapsConverter
 import com.markvoronin.maplinksconverter.data.ConversionResult
+import com.markvoronin.maplinksconverter.data.MapLinkSource
 import com.markvoronin.maplinksconverter.data.MapTargetApp
 import com.markvoronin.maplinksconverter.data.UrlExpander
+import com.markvoronin.maplinksconverter.data.getEffectiveTargetApp
+import com.markvoronin.maplinksconverter.data.toLinkSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -97,8 +100,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         onInputUrlChanged(input)
     }
 
-    fun getTargetAppForInput(@Suppress("UNUSED_PARAMETER") input: String = ""): MapTargetApp {
-        return _uiState.value.targetApp
+    fun getTargetAppForInput(input: String = ""): MapTargetApp {
+        val preferredTarget = _uiState.value.targetApp
+        if (input.isBlank()) return preferredTarget
+
+        val extractedUrl = AppleMapsConverter.extractAppleMapsUrl(input) ?: return preferredTarget
+        val linkSource = when {
+            extractedUrl.contains("apple", ignoreCase = true) -> MapLinkSource.APPLE_MAPS
+            extractedUrl.contains("google", ignoreCase = true) || extractedUrl.contains("goo.gl", ignoreCase = true) -> MapLinkSource.GOOGLE_MAPS
+            extractedUrl.contains("waze", ignoreCase = true) -> MapLinkSource.WAZE
+            else -> MapLinkSource.UNKNOWN
+        }
+        return preferredTarget.getEffectiveTargetApp(linkSource)
     }
 
     fun setTargetApp(target: MapTargetApp) {

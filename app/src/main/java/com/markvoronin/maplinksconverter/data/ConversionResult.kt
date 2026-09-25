@@ -28,6 +28,18 @@ fun MapTargetApp.toLinkSource(): MapLinkSource {
     }
 }
 
+fun MapTargetApp.getEffectiveTargetApp(linkSource: MapLinkSource): MapTargetApp {
+    if (this.toLinkSource() != linkSource) {
+        return this
+    }
+    return when (linkSource) {
+        MapLinkSource.GOOGLE_MAPS -> MapTargetApp.WAZE
+        MapLinkSource.WAZE -> MapTargetApp.GOOGLE_MAPS
+        MapLinkSource.APPLE_MAPS -> MapTargetApp.GOOGLE_MAPS
+        MapLinkSource.UNKNOWN -> this
+    }
+}
+
 data class ConversionResult(
     val originalInput: String,
     val extractedLinkUrl: String? = null,

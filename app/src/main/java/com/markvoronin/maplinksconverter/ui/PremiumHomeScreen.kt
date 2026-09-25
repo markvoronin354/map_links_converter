@@ -397,6 +397,7 @@ private fun PremiumConversionResultCard(
 
                     TargetDropdownPill(
                         currentTarget = result.targetApp,
+                        source = result.linkSource,
                         onTargetSelected = onResultTargetChanged
                     )
                 }
@@ -547,12 +548,20 @@ private fun PremiumConversionResultCard(
 @Composable
 private fun TargetDropdownPill(
     currentTarget: MapTargetApp,
+    source: MapLinkSource = MapLinkSource.UNKNOWN,
     onTargetSelected: (MapTargetApp) -> Unit
 ) {
     var expanded by remember { mutableStateOf(value = false) }
 
-    val availableTargets = remember {
-        MapTargetApp.entries
+    val availableTargets = remember(source) {
+        MapTargetApp.entries.filter { target ->
+            when (source) {
+                MapLinkSource.GOOGLE_MAPS -> target != MapTargetApp.GOOGLE_MAPS
+                MapLinkSource.WAZE -> target != MapTargetApp.WAZE
+                MapLinkSource.APPLE_MAPS -> target != MapTargetApp.APPLE_MAPS
+                MapLinkSource.UNKNOWN -> true
+            }
+        }
     }
 
     val isDark = isSystemInDarkTheme()
