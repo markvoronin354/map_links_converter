@@ -6,9 +6,11 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -81,12 +83,18 @@ import com.markvoronin.maplinksconverter.data.ConversionResult
 import com.markvoronin.maplinksconverter.data.MapLinkSource
 import com.markvoronin.maplinksconverter.data.MapLinkType
 import com.markvoronin.maplinksconverter.data.MapTargetApp
-import com.markvoronin.maplinksconverter.ui.theme.AppleMapsBg
-import com.markvoronin.maplinksconverter.ui.theme.AppleMapsColor
-import com.markvoronin.maplinksconverter.ui.theme.GoogleMapsBg
-import com.markvoronin.maplinksconverter.ui.theme.GoogleMapsColor
-import com.markvoronin.maplinksconverter.ui.theme.WazeBg
-import com.markvoronin.maplinksconverter.ui.theme.WazeColor
+import com.markvoronin.maplinksconverter.ui.theme.AppleMapsBgDark
+import com.markvoronin.maplinksconverter.ui.theme.AppleMapsBgLight
+import com.markvoronin.maplinksconverter.ui.theme.AppleMapsColorDark
+import com.markvoronin.maplinksconverter.ui.theme.AppleMapsColorLight
+import com.markvoronin.maplinksconverter.ui.theme.GoogleMapsBgDark
+import com.markvoronin.maplinksconverter.ui.theme.GoogleMapsBgLight
+import com.markvoronin.maplinksconverter.ui.theme.GoogleMapsColorDark
+import com.markvoronin.maplinksconverter.ui.theme.GoogleMapsColorLight
+import com.markvoronin.maplinksconverter.ui.theme.WazeBgDark
+import com.markvoronin.maplinksconverter.ui.theme.WazeBgLight
+import com.markvoronin.maplinksconverter.ui.theme.WazeColorDark
+import com.markvoronin.maplinksconverter.ui.theme.WazeColorLight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -234,7 +242,7 @@ private fun PremiumInputCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Default.Link,
@@ -363,10 +371,15 @@ private fun PremiumConversionResultCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f))
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant,
+                            shape = RoundedCornerShape(12.dp),
+                        )
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     BrandPill(source = result.linkSource)
 
@@ -542,17 +555,35 @@ private fun TargetDropdownPill(
         MapTargetApp.entries
     }
 
+    val isDark = isSystemInDarkTheme()
+
     val (name, bgColor, textColor) = when (currentTarget) {
-        MapTargetApp.GOOGLE_MAPS -> Triple("Google Maps", GoogleMapsBg, GoogleMapsColor)
-        MapTargetApp.WAZE -> Triple("Waze", WazeBg, WazeColor)
-        MapTargetApp.APPLE_MAPS -> Triple("Apple Maps", AppleMapsBg, AppleMapsColor)
+        MapTargetApp.GOOGLE_MAPS -> Triple(
+            "Google Maps",
+            if (isDark) GoogleMapsBgDark else GoogleMapsBgLight,
+            if (isDark) GoogleMapsColorDark else GoogleMapsColorLight,
+        )
+        MapTargetApp.WAZE -> Triple(
+            "Waze",
+            if (isDark) WazeBgDark else WazeBgLight,
+            if (isDark) WazeColorDark else WazeColorLight,
+        )
+        MapTargetApp.APPLE_MAPS -> Triple(
+            "Apple Maps",
+            if (isDark) AppleMapsBgDark else AppleMapsBgLight,
+            if (isDark) AppleMapsColorDark else AppleMapsColorLight,
+        )
     }
 
     Box {
         Surface(
             onClick = { expanded = true },
             shape = RoundedCornerShape(8.dp),
-            color = bgColor
+            color = bgColor,
+            border = BorderStroke(
+                width = 1.dp,
+                color = if (isDark) textColor.copy(alpha = 0.3f) else textColor.copy(alpha = 0.4f),
+            ),
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -623,10 +654,15 @@ private fun BrandPill(source: MapLinkSource? = null, target: MapTargetApp? = nul
         else -> "Map Link"
     }
 
+    val isDark = isSystemInDarkTheme()
+
     val (bgColor, textColor) = when {
-        (source == MapLinkSource.APPLE_MAPS) || (target == MapTargetApp.APPLE_MAPS) -> AppleMapsBg to AppleMapsColor
-        (source == MapLinkSource.GOOGLE_MAPS) || (target == MapTargetApp.GOOGLE_MAPS) -> GoogleMapsBg to GoogleMapsColor
-        (source == MapLinkSource.WAZE) || (target == MapTargetApp.WAZE) -> WazeBg to WazeColor
+        (source == MapLinkSource.APPLE_MAPS) || (target == MapTargetApp.APPLE_MAPS) ->
+            (if (isDark) AppleMapsBgDark else AppleMapsBgLight) to (if (isDark) AppleMapsColorDark else AppleMapsColorLight)
+        (source == MapLinkSource.GOOGLE_MAPS) || (target == MapTargetApp.GOOGLE_MAPS) ->
+            (if (isDark) GoogleMapsBgDark else GoogleMapsBgLight) to (if (isDark) GoogleMapsColorDark else GoogleMapsColorLight)
+        (source == MapLinkSource.WAZE) || (target == MapTargetApp.WAZE) ->
+            (if (isDark) WazeBgDark else WazeBgLight) to (if (isDark) WazeColorDark else WazeColorLight)
         else -> MaterialTheme.colorScheme.surfaceVariant to MaterialTheme.colorScheme.onSurfaceVariant
     }
 
@@ -634,7 +670,12 @@ private fun BrandPill(source: MapLinkSource? = null, target: MapTargetApp? = nul
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
             .background(bgColor)
-            .padding(horizontal = 10.dp, vertical = 4.dp)
+            .border(
+                width = 1.dp,
+                color = if (isDark) textColor.copy(alpha = 0.3f) else textColor.copy(alpha = 0.4f),
+                shape = RoundedCornerShape(8.dp),
+            )
+            .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         Text(
             text = name,
