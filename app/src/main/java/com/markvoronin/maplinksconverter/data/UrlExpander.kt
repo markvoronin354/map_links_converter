@@ -16,7 +16,7 @@ object UrlExpander {
 
     private val HTML_COORDS_REGEX = Pattern.compile(
         """(?:geo\.position|icbm|center|ll|coordinate|latlng)["']?\s*(?:content|value)?=["']?(-?\d{1,3}\.\d+)\s*[,%2C;]\s*(-?\d{1,3}\.\d+)""",
-        Pattern.CASE_INSENSITIVE
+        Pattern.CASE_INSENSITIVE,
     )
 
     private val GENERAL_COORDS_REGEX = Pattern.compile(
@@ -59,7 +59,7 @@ object UrlExpander {
                     return@withContext finalUrl
                 }
 
-                if ((!location.isNullOrBlank()) && (responseCode in 300..399)) {
+                if (!location.isNullOrBlank() && (responseCode in 300..399)) {
                     connection.disconnect()
                     currentUrl = if (location.startsWith("http", ignoreCase = true)) {
                         location

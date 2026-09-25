@@ -27,9 +27,6 @@ fun HomeScreen(viewModel: MainViewModel) {
         onClearInput = { viewModel.clearInput() },
         onResultTargetChanged = { viewModel.onTargetAppForCurrentResultChanged(it) },
         onTargetAppChanged = { viewModel.setTargetApp(it) },
-        onAppleMapsTargetChanged = { viewModel.setTargetApp(it) },
-        onGoogleMapsTargetChanged = { viewModel.setTargetApp(it) },
-        onWazeTargetChanged = { viewModel.setTargetApp(it) },
         onToggleAutoRedirect = { viewModel.setAutoRedirectEnabled(it) },
         onOpenUrl = { url -> openUrlInBrowserOrMaps(context, url) },
         onCopyUrl = { label, url -> copyToClipboard(context, label, url) },
@@ -45,9 +42,6 @@ fun HomeScreenContent(
     onClearInput: () -> Unit,
     onResultTargetChanged: (MapTargetApp) -> Unit = {},
     onTargetAppChanged: (MapTargetApp) -> Unit = {},
-    onAppleMapsTargetChanged: (MapTargetApp) -> Unit = onTargetAppChanged,
-    onGoogleMapsTargetChanged: (MapTargetApp) -> Unit = onTargetAppChanged,
-    onWazeTargetChanged: (MapTargetApp) -> Unit = onTargetAppChanged,
     onToggleAutoRedirect: (Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
     onCopyUrl: (label: String, url: String) -> Unit,
@@ -59,9 +53,6 @@ fun HomeScreenContent(
         onClearInput = onClearInput,
         onResultTargetChanged = onResultTargetChanged,
         onTargetAppChanged = onTargetAppChanged,
-        onAppleMapsTargetChanged = onAppleMapsTargetChanged,
-        onGoogleMapsTargetChanged = onGoogleMapsTargetChanged,
-        onWazeTargetChanged = onWazeTargetChanged,
         onToggleAutoRedirect = onToggleAutoRedirect,
         onOpenUrl = onOpenUrl,
         onCopyUrl = onCopyUrl,
@@ -88,7 +79,7 @@ private fun openAppSupportedLinksSettings(context: Context) {
         try {
             val intent = Intent(
                 Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                "package:${context.packageName}".toUri()
+                "package:${context.packageName}".toUri(),
             )
             context.startActivity(intent)
         } catch (_: Exception) {

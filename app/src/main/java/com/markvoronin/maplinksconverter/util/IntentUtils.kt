@@ -27,7 +27,7 @@ object IntentUtils {
                 setPackage(preferredPackage)
             }
             val resolveInfo = pm.resolveActivity(preferredIntent, PackageManager.MATCH_DEFAULT_ONLY)
-            if (resolveInfo != null && resolveInfo.activityInfo.packageName != context.packageName) {
+            if ((resolveInfo != null) && (resolveInfo.activityInfo.packageName != context.packageName)) {
                 return try {
                     context.startActivity(preferredIntent)
                     true
@@ -48,9 +48,11 @@ object IntentUtils {
 
         // Filter out our own package so we never loop back to MapLinksConverter
         val externalPackages = resolveInfos
+            .asSequence()
             .map { it.activityInfo.packageName }
             .filter { it != context.packageName }
             .distinct()
+            .toList()
 
         if (externalPackages.isNotEmpty()) {
             val externalIntents = externalPackages.map { pkg ->
@@ -92,9 +94,11 @@ object IntentUtils {
         }
 
         val externalBrowsers = browserInfos
+            .asSequence()
             .map { it.activityInfo.packageName }
             .filter { it != context.packageName }
             .distinct()
+            .toList()
 
         if (externalBrowsers.isNotEmpty()) {
             val browserPackageIntent = Intent(Intent.ACTION_VIEW, uri).apply {

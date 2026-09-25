@@ -18,7 +18,7 @@ object AppleMapsConverter {
 
     private val PATH_COORDS_REGEX = Pattern.compile(
         """(?:[/@=]|ll\.|lat=|=|to=)(-?\d{1,3}\.\d+)\s*[,%2C\s&]+(?:lon=|lng=)?(-?\d{1,3}\.\d+)""",
-        Pattern.CASE_INSENSITIVE
+        Pattern.CASE_INSENSITIVE,
     )
 
     private val APPLE_PLACE_NAME_REGEX = Pattern.compile(
@@ -438,7 +438,7 @@ object AppleMapsConverter {
 
         var queryString = ""
         val questionMarkIndex = url.indexOf('?')
-        if (questionMarkIndex != -1 && questionMarkIndex < url.length - 1) {
+        if ((questionMarkIndex != -1) && (questionMarkIndex < url.length - 1)) {
             queryString = url.substring(questionMarkIndex + 1)
         }
 
@@ -512,9 +512,7 @@ object AppleMapsConverter {
         val trimmed = q.trim()
         if (isRawUrl(trimmed)) return null
         val coords = cleanCoordinates(trimmed)
-        if (coords != null) {
-            return coords
-        }
+        if (coords != null) return coords
         val cleaned = trimmed.replace(Regex("(?i)^(?:ll[.=:]|loc:|geo:|point:|latlng[=:]|@)"), "").trim()
         return cleaned.ifBlank { null }
     }

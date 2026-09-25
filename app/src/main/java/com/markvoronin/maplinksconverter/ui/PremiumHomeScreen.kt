@@ -36,16 +36,12 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Navigation
-import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -70,18 +66,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,12 +81,10 @@ import com.markvoronin.maplinksconverter.data.ConversionResult
 import com.markvoronin.maplinksconverter.data.MapLinkSource
 import com.markvoronin.maplinksconverter.data.MapLinkType
 import com.markvoronin.maplinksconverter.data.MapTargetApp
-import com.markvoronin.maplinksconverter.data.toLinkSource
 import com.markvoronin.maplinksconverter.ui.theme.AppleMapsBg
 import com.markvoronin.maplinksconverter.ui.theme.AppleMapsColor
 import com.markvoronin.maplinksconverter.ui.theme.GoogleMapsBg
 import com.markvoronin.maplinksconverter.ui.theme.GoogleMapsColor
-import com.markvoronin.maplinksconverter.ui.theme.MapLinksConverterTheme
 import com.markvoronin.maplinksconverter.ui.theme.WazeBg
 import com.markvoronin.maplinksconverter.ui.theme.WazeColor
 
@@ -107,9 +96,6 @@ fun PremiumHomeScreenContent(
     onClearInput: () -> Unit,
     onResultTargetChanged: (MapTargetApp) -> Unit = {},
     onTargetAppChanged: (MapTargetApp) -> Unit = {},
-    onAppleMapsTargetChanged: (MapTargetApp) -> Unit = { onTargetAppChanged(it) },
-    onGoogleMapsTargetChanged: (MapTargetApp) -> Unit = { onTargetAppChanged(it) },
-    onWazeTargetChanged: (MapTargetApp) -> Unit = { onTargetAppChanged(it) },
     onToggleAutoRedirect: (Boolean) -> Unit,
     onOpenUrl: (String) -> Unit,
     onCopyUrl: (label: String, url: String) -> Unit,
@@ -123,7 +109,7 @@ fun PremiumHomeScreenContent(
                 title = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Box(
                             modifier = Modifier
@@ -131,13 +117,13 @@ fun PremiumHomeScreenContent(
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(MaterialTheme.colorScheme.primary)
                                 .padding(6.dp),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
                             Icon(
                                 imageVector = Icons.Default.SwapHoriz,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(22.dp)
+                                modifier = Modifier.size(22.dp),
                             )
                         }
 
@@ -146,23 +132,23 @@ fun PremiumHomeScreenContent(
                                 text = "Map Links",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface,
                             )
                             Text(
                                 text = "Cross-Platform Converter",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary,
-                                fontSize = 10.sp
+                                fontSize = 10.sp,
                             )
                         }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background
-                )
+                    containerColor = MaterialTheme.colorScheme.background,
+                ),
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -170,7 +156,7 @@ fun PremiumHomeScreenContent(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             PremiumInputCard(
                 inputUrl = uiState.inputUrl,
@@ -180,7 +166,7 @@ fun PremiumHomeScreenContent(
                 onPaste = {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = clipboard.primaryClip
-                    if (clip != null && clip.itemCount > 0) {
+                    if ((clip != null) && (clip.itemCount > 0)) {
                         val pastedText = clip.getItemAt(0).text?.toString() ?: ""
                         if (pastedText.isNotBlank()) {
                             onInputUrlChanged(pastedText)
@@ -194,18 +180,18 @@ fun PremiumHomeScreenContent(
                     result = result,
                     onOpenUrl = onOpenUrl,
                     onCopyUrl = onCopyUrl,
-                    onResultTargetChanged = onResultTargetChanged
+                    onResultTargetChanged = onResultTargetChanged,
                 )
             }
 
             PremiumTargetSelectionCard(
                 selectedTarget = uiState.targetApp,
-                onTargetSelected = onTargetAppChanged
+                onTargetSelected = onTargetAppChanged,
             )
 
             PremiumAutoRedirectCard(
                 autoRedirectEnabled = uiState.autoRedirectEnabled,
-                onToggleAutoRedirect = onToggleAutoRedirect
+                onToggleAutoRedirect = onToggleAutoRedirect,
             )
 
             PremiumInstructionsCard(onOpenLinkSettings = onOpenLinkSettings)
@@ -229,22 +215,22 @@ private fun PremiumInputCard(
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outline,
-                shape = RoundedCornerShape(18.dp)
+                shape = RoundedCornerShape(18.dp),
             ),
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp
+        tonalElevation = 2.dp,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -345,7 +331,7 @@ private fun PremiumConversionResultCard(
     result: ConversionResult,
     onOpenUrl: (String) -> Unit,
     onCopyUrl: (String, String) -> Unit,
-    onResultTargetChanged: (MapTargetApp) -> Unit = {}
+    onResultTargetChanged: (MapTargetApp) -> Unit = {},
 ) {
     val containerBorder = if (result.isSuccess) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
@@ -444,7 +430,7 @@ private fun PremiumConversionResultCard(
                 }
 
                 // Additional metadata grid if available
-                if (result.address != null && result.query != null) {
+                if ((result.address != null) && (result.query != null)) {
                     MetadataRow(label = "Address", value = result.address)
                 }
                 result.origin?.let { MetadataRow(label = "Origin", value = it) }
@@ -748,10 +734,9 @@ private fun PremiumTargetSelectionCard(
             }
 
             TargetSegmentRow(
-                sourceLabel = "Open all links in",
                 selectedTarget = selectedTarget,
                 availableTargets = listOf(MapTargetApp.GOOGLE_MAPS, MapTargetApp.WAZE, MapTargetApp.APPLE_MAPS),
-                onTargetSelected = onTargetSelected
+                onTargetSelected = onTargetSelected,
             )
         }
     }
@@ -759,10 +744,10 @@ private fun PremiumTargetSelectionCard(
 
 @Composable
 private fun TargetSegmentRow(
-    sourceLabel: String,
     selectedTarget: MapTargetApp,
+    sourceLabel: String = "Open all links in",
     availableTargets: List<MapTargetApp> = listOf(MapTargetApp.GOOGLE_MAPS, MapTargetApp.WAZE, MapTargetApp.APPLE_MAPS),
-    onTargetSelected: (MapTargetApp) -> Unit
+    onTargetSelected: (MapTargetApp) -> Unit,
 ) {
     val selectedIndex = availableTargets.indexOf(selectedTarget).coerceAtLeast(0)
 
@@ -963,45 +948,5 @@ private fun PremiumInstructionsCard(onOpenLinkSettings: () -> Unit) {
                 Text("Configure Default Link Handling", fontSize = 13.sp)
             }
         }
-    }
-}
-
-// Preview Composables for rendering
-
-@Preview(showBackground = true, name = "Premium Dark Theme")
-@Composable
-fun PremiumDarkHomeScreenPreview() {
-    MapLinksConverterTheme(darkTheme = true) {
-        PremiumHomeScreenContent(
-            uiState = sampleUiStateWithResult,
-            onInputUrlChanged = {},
-            onClearInput = {},
-            onAppleMapsTargetChanged = {},
-            onGoogleMapsTargetChanged = {},
-            onWazeTargetChanged = {},
-            onToggleAutoRedirect = {},
-            onOpenUrl = {},
-            onCopyUrl = { _, _ -> },
-            onOpenLinkSettings = {}
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Premium Light Theme")
-@Composable
-fun PremiumLightHomeScreenPreview() {
-    MapLinksConverterTheme(darkTheme = false) {
-        PremiumHomeScreenContent(
-            uiState = sampleUiStateWithResult,
-            onInputUrlChanged = {},
-            onClearInput = {},
-            onAppleMapsTargetChanged = {},
-            onGoogleMapsTargetChanged = {},
-            onWazeTargetChanged = {},
-            onToggleAutoRedirect = {},
-            onOpenUrl = {},
-            onCopyUrl = { _, _ -> },
-            onOpenLinkSettings = {}
-        )
     }
 }

@@ -8,7 +8,6 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.markvoronin.maplinksconverter.data.AppleMapsConverter
 import com.markvoronin.maplinksconverter.data.ConversionResult
-import com.markvoronin.maplinksconverter.data.MapLinkSource
 import com.markvoronin.maplinksconverter.data.MapTargetApp
 import com.markvoronin.maplinksconverter.data.UrlExpander
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,11 +23,7 @@ data class MainUiState(
     val targetApp: MapTargetApp = MapTargetApp.GOOGLE_MAPS,
     val isLoading: Boolean = false,
     val userNotice: String? = null,
-) {
-    val appleMapsTarget: MapTargetApp get() = targetApp
-    val googleMapsTarget: MapTargetApp get() = targetApp
-    val wazeTarget: MapTargetApp get() = targetApp
-}
+)
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -40,8 +35,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(
         MainUiState(
             autoRedirectEnabled = prefs.getBoolean(KEY_AUTO_REDIRECT, true),
-            targetApp = loadSavedTargetApp()
-        )
+            targetApp = loadSavedTargetApp(),
+        ),
     )
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
 
@@ -57,7 +52,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val targetApp = getTargetAppForInput(newUrl)
+        val targetApp = getTargetAppForInput()
         val initialResult = AppleMapsConverter.convert(newUrl, targetApp)
 
         if (initialResult.isSuccess && initialResult.hasLocationData()) {
@@ -82,7 +77,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val expanded = UrlExpander.expandUrlIfNeeded(newUrl)
             if (expanded != newUrl) {
-                val updatedTargetApp = getTargetAppForInput(expanded)
+                val updatedTargetApp = getTargetAppForInput()
                 val expandedResult = AppleMapsConverter.convert(expanded, updatedTargetApp)
                 _uiState.update {
                     it.copy(
@@ -102,11 +97,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         onInputUrlChanged(input)
     }
 
-    fun getTargetAppForInput(input: String): MapTargetApp {
-        return _uiState.value.targetApp
-    }
-
-    fun getTargetAppForSource(source: MapLinkSource): MapTargetApp {
+    fun getTargetAppForInput(@Suppress("UNUSED_PARAMETER") input: String = ""): MapTargetApp {
         return _uiState.value.targetApp
     }
 
@@ -115,10 +106,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.update { it.copy(targetApp = target) }
         reconvertCurrentInput()
     }
-
-    fun setAppleMapsTarget(target: MapTargetApp) = setTargetApp(target)
-    fun setGoogleMapsTarget(target: MapTargetApp) = setTargetApp(target)
-    fun setWazeTarget(target: MapTargetApp) = setTargetApp(target)
 
     fun onTargetAppForCurrentResultChanged(target: MapTargetApp) {
         val currentResult = _uiState.value.conversionResult ?: return
@@ -157,10 +144,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 isLoading = false
             )
         }
-    }
-
-    fun clearNotice() {
-        _uiState.update { it.copy(userNotice = null) }
     }
 
     fun isAutoRedirectEnabled(): Boolean {

@@ -20,15 +20,6 @@ enum class MapTargetApp {
     APPLE_MAPS
 }
 
-fun MapLinkSource.toTargetApp(): MapTargetApp? {
-    return when (this) {
-        MapLinkSource.GOOGLE_MAPS -> MapTargetApp.GOOGLE_MAPS
-        MapLinkSource.WAZE -> MapTargetApp.WAZE
-        MapLinkSource.APPLE_MAPS -> MapTargetApp.APPLE_MAPS
-        MapLinkSource.UNKNOWN -> null
-    }
-}
-
 fun MapTargetApp.toLinkSource(): MapLinkSource {
     return when (this) {
         MapTargetApp.GOOGLE_MAPS -> MapLinkSource.GOOGLE_MAPS
