@@ -27,7 +27,7 @@
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M45,41 L57,41 M53,37 L58,41 L53,45" />
+        android:pathData="M45,39 L57,39 M53,35 L58,39 L53,43" />
 
     <!-- Convert Arrows: Bottom Arrow (Left) -->
     <path
@@ -36,5 +36,5 @@
         android:strokeWidth="2.5"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M63,49 L51,49 M55,45 L50,49 L55,53" />
+        android:pathData="M63,51 L51,51 M55,47 L50,51 L55,55" />
 </vector>
