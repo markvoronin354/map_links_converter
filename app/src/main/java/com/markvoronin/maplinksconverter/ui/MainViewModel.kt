@@ -12,7 +12,6 @@ import com.markvoronin.maplinksconverter.data.MapLinkSource
 import com.markvoronin.maplinksconverter.data.MapTargetApp
 import com.markvoronin.maplinksconverter.data.UrlExpander
 import com.markvoronin.maplinksconverter.data.getEffectiveTargetApp
-import com.markvoronin.maplinksconverter.data.toLinkSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,7 +54,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        val targetApp = getTargetAppForInput()
+        val targetApp = getTargetAppForInput(newUrl)
         val initialResult = AppleMapsConverter.convert(newUrl, targetApp)
 
         if (initialResult.isSuccess && initialResult.hasLocationData()) {
@@ -80,7 +79,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val expanded = UrlExpander.expandUrlIfNeeded(newUrl)
             if (expanded != newUrl) {
-                val updatedTargetApp = getTargetAppForInput()
+                val updatedTargetApp = getTargetAppForInput(expanded)
                 val expandedResult = AppleMapsConverter.convert(expanded, updatedTargetApp)
                 _uiState.update {
                     it.copy(
@@ -100,7 +99,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         onInputUrlChanged(input)
     }
 
-    fun getTargetAppForInput(input: String = ""): MapTargetApp {
+    fun getTargetAppForInput(input: String): MapTargetApp {
         val preferredTarget = _uiState.value.targetApp
         if (input.isBlank()) return preferredTarget
 
@@ -117,7 +116,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setTargetApp(target: MapTargetApp) {
         prefs.edit { putString(KEY_TARGET_APP, target.name) }
         _uiState.update { it.copy(targetApp = target) }
-        reconvertCurrentInput()
     }
 
     fun onTargetAppForCurrentResultChanged(target: MapTargetApp) {
@@ -140,13 +138,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setAutoRedirectEnabled(enabled: Boolean) {
         prefs.edit { putBoolean(KEY_AUTO_REDIRECT, enabled) }
         _uiState.update { it.copy(autoRedirectEnabled = enabled) }
-    }
-
-    private fun reconvertCurrentInput() {
-        val currentInput = _uiState.value.inputUrl
-        if (currentInput.isNotBlank()) {
-            onInputUrlChanged(currentInput)
-        }
     }
 
     fun clearInput() {
