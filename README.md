@@ -1,6 +1,6 @@
 # Map Links Converter
 
-**Map Links Converter** is an Android application built with Jetpack Compose and Kotlin that seamlessly intercepts, converts, and redirects map links between **Apple Maps**, **Google Maps**, and **Waze**.
+**Map Links Converter** is an Android application that seamlessly intercepts, converts, and redirects map links between **Apple Maps**, **Google Maps**, and **Waze**.
 
 When someone shares an Apple Maps or Waze link with an Android user (or vice versa), Map Links Converter automatically translates the coordinates, place names, addresses, or navigation parameters into your preferred navigation app.
 
