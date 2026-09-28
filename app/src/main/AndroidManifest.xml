@@ -45,10 +45,10 @@
 
                 <data android:scheme="https" />
                 <data android:scheme="http" />
+                <data android:host="apple.co" />
                 <data android:host="maps.apple" />
                 <data android:host="maps.apple.com" />
                 <data android:host="www.maps.apple.com" />
-                <data android:host="apple.co" />
             </intent-filter>
 
             <intent-filter android:autoVerify="false">
@@ -70,8 +70,8 @@
 
                 <data android:scheme="https" />
                 <data android:scheme="http" />
-                <data android:host="maps.google.com" />
                 <data android:host="maps.app.goo.gl" />
+                <data android:host="maps.google.com" />
             </intent-filter>
 
             <!-- Intercept Waze links -->
@@ -82,9 +82,9 @@
 
                 <data android:scheme="https" />
                 <data android:scheme="http" />
+                <data android:host="ul.waze.com" />
                 <data android:host="waze.com" />
                 <data android:host="www.waze.com" />
-                <data android:host="ul.waze.com" />
             </intent-filter>
 
             <intent-filter>
