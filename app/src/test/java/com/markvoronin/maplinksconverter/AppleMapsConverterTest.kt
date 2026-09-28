@@ -270,6 +270,52 @@ class AppleMapsConverterTest {
     }
 
     @Test
+    fun testConvert_geoUriAddress() {
+        val input = "geo:0,0?q=332%20Cocoanut%20Ave%2C%20Sarasota%2C%20FL%2034236%2C%20USA"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.GOOGLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals("332 Cocoanut Ave, Sarasota, FL 34236, USA", result.query)
+        assertNull(result.coordinates)
+        assertEquals("https://www.google.com/maps/search/?api=1&query=332+Cocoanut+Ave%2C+Sarasota%2C+FL+34236%2C+USA", result.googleMapsUrl)
+        assertEquals("https://waze.com/ul?q=332+Cocoanut+Ave%2C+Sarasota%2C+FL+34236%2C+USA&navigate=yes", result.wazeUrl)
+        assertEquals("https://maps.apple.com/?q=332+Cocoanut+Ave%2C+Sarasota%2C+FL+34236%2C+USA", result.appleMapsUrl)
+    }
+
+    @Test
+    fun testConvert_geoUriCoordinates() {
+        val input = "geo:27.3381,-82.5422"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.GOOGLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals("27.3381,-82.5422", result.coordinates)
+        assertEquals("https://www.google.com/maps/search/?api=1&query=27.3381%2C-82.5422", result.googleMapsUrl)
+        assertEquals("https://waze.com/ul?ll=27.3381%2C-82.5422&navigate=yes", result.wazeUrl)
+    }
+
+    @Test
+    fun testConvert_geoUriCoordinatesWithLabel() {
+        val input = "geo:0,0?q=27.3381,-82.5422(My+Place)"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.GOOGLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals("27.3381,-82.5422", result.coordinates)
+        assertEquals("My Place", result.query)
+        assertEquals("https://www.google.com/maps/search/?api=1&query=My+Place&center=27.3381%2C-82.5422", result.googleMapsUrl)
+        assertEquals("https://waze.com/ul?ll=27.3381%2C-82.5422&q=My+Place&navigate=yes", result.wazeUrl)
+    }
+
+    @Test
+    fun testConvert_rawAddressText() {
+        val input = "332 Cocoanut Ave, Sarasota, FL 34236, USA"
+        val result = AppleMapsConverter.convert(input, MapTargetApp.GOOGLE_MAPS)
+
+        assertTrue(result.isSuccess)
+        assertEquals("332 Cocoanut Ave, Sarasota, FL 34236, USA", result.query)
+        assertEquals("https://www.google.com/maps/search/?api=1&query=332+Cocoanut+Ave%2C+Sarasota%2C+FL+34236%2C+USA", result.googleMapsUrl)
+    }
+
+    @Test
     fun testGetEffectiveTargetApp() {
         // Preferred is Google, input source is Google -> fallback to Waze
         assertEquals(MapTargetApp.WAZE, MapTargetApp.GOOGLE_MAPS.getEffectiveTargetApp(MapLinkSource.GOOGLE_MAPS))

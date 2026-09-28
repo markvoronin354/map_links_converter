@@ -95,6 +95,15 @@
                 <data android:scheme="waze" />
             </intent-filter>
 
+            <!-- Intercept geo: URIs (raw addresses auto-detected by Android, coordinates, etc.) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="geo" />
+            </intent-filter>
+
             <!-- Intercept shared text containing Apple Maps, Google Maps, or Waze links -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />

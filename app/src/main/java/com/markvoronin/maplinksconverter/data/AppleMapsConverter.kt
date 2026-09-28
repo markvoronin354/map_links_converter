@@ -7,7 +7,12 @@ import java.util.regex.Pattern
 object AppleMapsConverter {
 
     private val MAP_LINK_REGEX = Pattern.compile(
-        "https?://(?:[a-zA-Z0-9-]+\\.)*(?:maps\\.apple\\.com|maps\\.apple|apple\\.co|waze\\.com|google\\.com|goo\\.gl)[^\\s<>\"]*|waze://[^\\s<>\"]*",
+        "https?://(?:[a-zA-Z0-9-]+\\.)*(?:maps\\.apple\\.com|maps\\.apple|apple\\.co|waze\\.com|google\\.com|goo\\.gl)[^\\s<>\"]*|waze://[^\\s<>\"]*|geo:[^\\s<>\"]*",
+        Pattern.CASE_INSENSITIVE,
+    )
+
+    private val GEO_QUERY_LABEL_REGEX = Pattern.compile(
+        """^(-?\d+(?:\.\d+)?)\s*[,%2C]\s*(-?\d+(?:\.\d+)?)\s*\(([^)]+)\)$""",
         Pattern.CASE_INSENSITIVE,
     )
 
@@ -43,7 +48,7 @@ object AppleMapsConverter {
     )
 
     /**
-     * Extracts an Apple Maps, Google Maps, or Waze URL from any given text.
+     * Extracts an Apple Maps, Google Maps, or Waze URL or geo: URI / address from any given text.
      */
     fun extractAppleMapsUrl(input: String): String? {
         val trimmed = input.trim()
@@ -64,7 +69,13 @@ object AppleMapsConverter {
             return "https://$trimmed"
         }
 
-        if (trimmed.startsWith("waze://", ignoreCase = true)) {
+        if (trimmed.startsWith("waze://", ignoreCase = true) ||
+            trimmed.startsWith("geo:", ignoreCase = true)) {
+            return trimmed
+        }
+
+        // If it's not an http/https URL to a website (e.g. raw address "332 Cocoanut Ave, Sarasota, FL"), treat as raw location input
+        if (!trimmed.startsWith("http://", ignoreCase = true) && !trimmed.startsWith("https://", ignoreCase = true)) {
             return trimmed
         }
 
@@ -117,6 +128,39 @@ object AppleMapsConverter {
         var fromParam = queryParams["from"] ?: queryParams["from_ll"] ?: queryParams["origin"] ?: queryParams["saddr"]
         val dirflgParam = queryParams["dirflg"] ?: queryParams["travelmode"]
 
+        // Handle geo: URIs and raw plain text addresses / coordinates
+        if (extractedUrl.startsWith("geo:", ignoreCase = true)) {
+            val pathPart = extractedUrl.substringBefore('?').substringAfter("geo:", "").trim()
+            val pathCoords = cleanCoordinates(pathPart)
+            if (pathCoords != null && !isZeroCoordinates(pathCoords) && llParam.isNullOrBlank()) {
+                llParam = pathCoords
+            }
+
+            if (!qParam.isNullOrBlank()) {
+                val labelMatcher = GEO_QUERY_LABEL_REGEX.matcher(qParam)
+                if (labelMatcher.matches()) {
+                    val lat = labelMatcher.group(1)
+                    val lon = labelMatcher.group(2)
+                    val label = labelMatcher.group(3)
+                    if (llParam.isNullOrBlank() && lat != null && lon != null) {
+                        llParam = "$lat,$lon"
+                    }
+                    if (!label.isNullOrBlank()) {
+                        qParam = label
+                    }
+                }
+            }
+        } else if (!extractedUrl.startsWith("http://", ignoreCase = true) &&
+            !extractedUrl.startsWith("https://", ignoreCase = true) &&
+            !extractedUrl.startsWith("waze://", ignoreCase = true)) {
+            val rawCoords = cleanCoordinates(extractedUrl)
+            if (rawCoords != null && !isZeroCoordinates(rawCoords)) {
+                if (llParam.isNullOrBlank()) llParam = rawCoords
+            } else if (qParam.isNullOrBlank()) {
+                qParam = extractedUrl
+            }
+        }
+
         if (llParam.isNullOrBlank()) {
             val lat = queryParams["lat"]
             val lon = queryParams["lon"] ?: queryParams["lng"]
@@ -128,7 +172,10 @@ object AppleMapsConverter {
         if (llParam.isNullOrBlank()) {
             val pathCoordsMatcher = PATH_COORDS_REGEX.matcher(extractedUrl)
             if (pathCoordsMatcher.find()) {
-                llParam = "${pathCoordsMatcher.group(1)},${pathCoordsMatcher.group(2)}"
+                val foundCoords = "${pathCoordsMatcher.group(1)},${pathCoordsMatcher.group(2)}"
+                if (!isZeroCoordinates(foundCoords)) {
+                    llParam = foundCoords
+                }
             }
         }
 
@@ -179,9 +226,15 @@ object AppleMapsConverter {
             }
         }
 
-        val coordinates = cleanCoordinates(llParam) ?: extractCoordinatesFromQuery(qParam) ?: cleanCoordinates(toParam) ?: cleanCoordinates(addressParam)
+        val rawCoordinates = cleanCoordinates(llParam) ?: extractCoordinatesFromQuery(qParam) ?: cleanCoordinates(toParam) ?: cleanCoordinates(addressParam)
         val query = cleanQuery(qParam)
         val address = addressParam?.trim()
+
+        val coordinates = if (isZeroCoordinates(rawCoordinates) && (!query.isNullOrBlank() || !address.isNullOrBlank() || !toParam.isNullOrBlank())) {
+            null
+        } else {
+            rawCoordinates
+        }
 
         // 1. Directions mode
         if (!toParam.isNullOrBlank() || !fromParam.isNullOrBlank()) {
@@ -515,6 +568,17 @@ object AppleMapsConverter {
         if (coords != null) return coords
         val cleaned = trimmed.replace(Regex("(?i)^(?:ll[.=:]|loc:|geo:|point:|latlng[=:]|@)"), "").trim()
         return cleaned.ifBlank { null }
+    }
+
+    private fun isZeroCoordinates(coords: String?): Boolean {
+        if (coords.isNullOrBlank()) return false
+        val parts = coords.split(",")
+        if (parts.size == 2) {
+            val lat = parts[0].toDoubleOrNull()
+            val lon = parts[1].toDoubleOrNull()
+            if (lat == 0.0 && lon == 0.0) return true
+        }
+        return false
     }
 
     private fun decode(s: String): String {
