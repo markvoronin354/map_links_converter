@@ -11,7 +11,7 @@ When someone shares an Apple Maps or Waze link with an Android user (or vice ver
 - **🌐 Deep Link Interception**: Catch map URLs tapped in web browsers, messenger apps, or shared via the Android system Share sheet (`ACTION_VIEW` and `ACTION_SEND`).
 - **🔀 Multi-Provider Conversion**: Converts links bidirectionally between:
   - **Apple Maps** (`maps.apple.com`, `apple.co`)
-  - **Google Maps** (`maps.google.com`, `maps.app.goo.gl`, `goo.gl`)
+  - **Google Maps** (`maps.google.com`, `maps.app.goo.gl`)
   - **Waze** (`waze.com`, `ul.waze.com`, `waze://`)
 - **🚀 Fast Auto-Redirect**: Instantly open converted links in your default app without requiring manual interaction when auto-redirect is enabled.
 - **⚡ Short URL Expansion**: Asynchronously resolves shortened share links (`maps.app.goo.gl`, `apple.co`, `waze.com`) and extracts hidden coordinates and location metadata via HTTP header redirection and canonical meta tag parsing.
@@ -59,7 +59,7 @@ maplinksconverter/
 
 ## 🚀 How It Works
 
-1. **Intent Interception**: `AndroidManifest.xml` declares intent filters for domain hosts (`maps.apple.com`, `maps.google.com`, `waze.com`, `goo.gl`, etc.) and the `geo:` scheme.
+1. **Intent Interception**: `AndroidManifest.xml` declares intent filters for domain hosts (`maps.apple.com`, `maps.google.com`, `waze.com`, etc.) and the `geo:` scheme.
 2. **Fast Path Execution**: In `MainActivity.kt`, incoming intent links are immediately inspected:
    - If direct coordinates/queries are present and Auto-Redirect is enabled, the target application is launched synchronously for zero-delay navigation.
 3. **Async URL Expansion**: Shortened links (like `maps.app.goo.gl` or `apple.co`) trigger `UrlExpander`, following redirects and reading canonical metadata to retrieve coordinates.

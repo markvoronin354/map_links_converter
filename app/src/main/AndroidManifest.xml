@@ -72,18 +72,6 @@
                 <data android:scheme="http" />
                 <data android:host="maps.google.com" />
                 <data android:host="maps.app.goo.gl" />
-                <data android:host="goo.gl" />
-            </intent-filter>
-
-            <intent-filter android:autoVerify="false">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="https" />
-                <data android:scheme="http" />
-                <data android:host="www.google.com" />
-                <data android:pathPrefix="/maps" />
             </intent-filter>
 
             <!-- Intercept Waze links -->

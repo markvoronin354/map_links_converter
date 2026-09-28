@@ -983,7 +983,7 @@ private fun PremiumInstructionsCard(onOpenLinkSettings: () -> Unit) {
             }
 
             Text(
-                text = "On Android 12+, enable 'maps.app.goo.gl', 'goo.gl', and 'maps.apple.com' under 'Open by default' in System Settings, or use the Android Share menu to share links directly to Map Links Converter.",
+                text = "On Android 12+, enable 'maps.app.goo.gl' and 'maps.apple.com' under 'Open by default' in System Settings, or use the Android Share menu to share links directly to Map Links Converter.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
