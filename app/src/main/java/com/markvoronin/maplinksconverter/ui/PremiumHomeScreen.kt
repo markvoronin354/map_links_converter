@@ -785,7 +785,7 @@ private fun PremiumTargetSelectionCard(
 
             TargetSegmentRow(
                 selectedTarget = selectedTarget,
-                availableTargets = listOf(MapTargetApp.GOOGLE_MAPS, MapTargetApp.WAZE, MapTargetApp.APPLE_MAPS),
+                availableTargets = listOf(MapTargetApp.GOOGLE_MAPS, MapTargetApp.WAZE),
                 onTargetSelected = onTargetSelected,
             )
         }
@@ -796,7 +796,7 @@ private fun PremiumTargetSelectionCard(
 private fun TargetSegmentRow(
     selectedTarget: MapTargetApp,
     sourceLabel: String = "Open all links in",
-    availableTargets: List<MapTargetApp> = listOf(MapTargetApp.GOOGLE_MAPS, MapTargetApp.WAZE, MapTargetApp.APPLE_MAPS),
+    availableTargets: List<MapTargetApp> = listOf(MapTargetApp.GOOGLE_MAPS, MapTargetApp.WAZE),
     onTargetSelected: (MapTargetApp) -> Unit,
 ) {
     val selectedIndex = availableTargets.indexOf(selectedTarget).coerceAtLeast(0)

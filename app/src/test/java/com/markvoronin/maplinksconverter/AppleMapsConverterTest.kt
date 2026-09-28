@@ -326,7 +326,9 @@ class AppleMapsConverterTest {
         // Preferred is Waze, input source is Waze -> fallback to Google
         assertEquals(MapTargetApp.GOOGLE_MAPS, MapTargetApp.WAZE.getEffectiveTargetApp(MapLinkSource.WAZE))
 
-        // Preferred is Apple, input source is Apple -> fallback to Google
+        // Preferred is Apple on Android -> maps to Google Maps (or Waze if input was Google Maps)
         assertEquals(MapTargetApp.GOOGLE_MAPS, MapTargetApp.APPLE_MAPS.getEffectiveTargetApp(MapLinkSource.APPLE_MAPS))
+        assertEquals(MapTargetApp.WAZE, MapTargetApp.APPLE_MAPS.getEffectiveTargetApp(MapLinkSource.GOOGLE_MAPS))
+        assertEquals(MapTargetApp.GOOGLE_MAPS, MapTargetApp.APPLE_MAPS.getEffectiveTargetApp(MapLinkSource.UNKNOWN))
     }
 }

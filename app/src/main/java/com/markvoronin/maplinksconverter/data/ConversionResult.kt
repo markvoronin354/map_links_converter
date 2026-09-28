@@ -29,14 +29,15 @@ fun MapTargetApp.toLinkSource(): MapLinkSource {
 }
 
 fun MapTargetApp.getEffectiveTargetApp(linkSource: MapLinkSource): MapTargetApp {
-    if (this.toLinkSource() != linkSource) {
-        return this
+    val preferred = if (this == MapTargetApp.APPLE_MAPS) MapTargetApp.GOOGLE_MAPS else this
+    if (preferred.toLinkSource() != linkSource) {
+        return preferred
     }
     return when (linkSource) {
         MapLinkSource.GOOGLE_MAPS -> MapTargetApp.WAZE
         MapLinkSource.WAZE -> MapTargetApp.GOOGLE_MAPS
         MapLinkSource.APPLE_MAPS -> MapTargetApp.GOOGLE_MAPS
-        MapLinkSource.UNKNOWN -> this
+        MapLinkSource.UNKNOWN -> preferred
     }
 }
 

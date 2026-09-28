@@ -114,8 +114,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setTargetApp(target: MapTargetApp) {
-        prefs.edit { putString(KEY_TARGET_APP, target.name) }
-        _uiState.update { it.copy(targetApp = target) }
+        val effectiveTarget = if (target == MapTargetApp.APPLE_MAPS) MapTargetApp.GOOGLE_MAPS else target
+        prefs.edit { putString(KEY_TARGET_APP, effectiveTarget.name) }
+        _uiState.update { it.copy(targetApp = effectiveTarget) }
     }
 
     fun onTargetAppForCurrentResultChanged(target: MapTargetApp) {
@@ -156,16 +157,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadSavedTargetApp(): MapTargetApp {
         val name = prefs.getString(KEY_TARGET_APP, null)
-            ?: prefs.getString(KEY_TARGET_APPLE_MAPS, null)
             ?: prefs.getString(KEY_TARGET_GOOGLE_MAPS, null)
             ?: prefs.getString(KEY_TARGET_WAZE, null)
             ?: return MapTargetApp.GOOGLE_MAPS
 
-        return try {
+        val loaded = try {
             MapTargetApp.valueOf(name)
         } catch (_: Exception) {
             MapTargetApp.GOOGLE_MAPS
         }
+        return if (loaded == MapTargetApp.APPLE_MAPS) MapTargetApp.GOOGLE_MAPS else loaded
     }
 
     companion object {
